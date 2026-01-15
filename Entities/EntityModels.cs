@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SSRBusiness.Entities;
 
@@ -35,6 +36,7 @@ public class DisplayField
     public int DisplayOrder { get; set; }
 }
 
+[Table("Permission")]
 public class Permission
 {
     [Key, MaxLength(50)]

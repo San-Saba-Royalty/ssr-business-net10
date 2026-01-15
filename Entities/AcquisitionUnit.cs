@@ -47,6 +47,7 @@ public class AcquisitionUnit
     public int? SectionNum { get; set; }
 
     public virtual Acquisition Acquisition { get; set; } = null!;
+    [ForeignKey("UnitTypeCode")]
     public virtual UnitType? UnitType { get; set; }
     public virtual ICollection<AcqUnitCounty> AcqUnitCounties { get; set; } = new List<AcqUnitCounty>();
     public virtual ICollection<AcqUnitWell> AcqUnitWells { get; set; } = new List<AcqUnitWell>();

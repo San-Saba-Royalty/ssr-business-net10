@@ -36,6 +36,7 @@ public class LetterAgreementUnit
     public int? SectionNum { get; set; }
 
     public virtual LetterAgreement LetterAgreement { get; set; } = null!;
+    [ForeignKey("UnitTypeCode")]
     public virtual UnitType? UnitType { get; set; }
     public virtual ICollection<LetAgUnitCounty> LetAgUnitCounties { get; set; } = new List<LetAgUnitCounty>();
 }

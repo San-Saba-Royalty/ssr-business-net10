@@ -49,11 +49,23 @@ public class UserRepository : Repository<User>
     /// <returns>True if authenticated, false otherwise</returns>
     public bool AuthenticateUserCredentials(User user, string password)
     {
+        Console.WriteLine($"[AUTH DEBUG] Authenticating user: {user?.Email}");
+        Console.WriteLine($"[AUTH DEBUG] User has password: {!string.IsNullOrEmpty(user?.Password)}");
+        Console.WriteLine($"[AUTH DEBUG] User has salt: {!string.IsNullOrEmpty(user?.Salt)}");
+        Console.WriteLine($"[AUTH DEBUG] User is active: {user?.IsActive}");
+        
         if (user?.Password == null || user.Salt == null)
+        {
+            Console.WriteLine("[AUTH DEBUG] Authentication failed: Missing password or salt");
             return false;
+        }
 
         var saltedHash = SaltedHash.Create(user.Salt, user.Password);
-        return saltedHash.Verify(password);
+        var result = saltedHash.Verify(password);
+        
+        Console.WriteLine($"[AUTH DEBUG] Password verification result: {result}");
+        
+        return result;
     }
 
     /// <summary>

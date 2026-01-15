@@ -11,8 +11,6 @@ public class LoginStatus
 
     [StringLength(50)]
     public string? StatusName { get; set; }
-
-    public virtual ICollection<User> Users { get; set; } = new List<User>();
 }
 
 [Table("UserRoles")]
@@ -38,6 +36,7 @@ public class Role
     public int RoleId { get; set; }
 
     [StringLength(50)]
+    [Column("Role")]
     public string RoleName { get; set; } = string.Empty;
 
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();

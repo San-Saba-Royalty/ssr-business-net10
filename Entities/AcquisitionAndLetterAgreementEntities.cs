@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SSRBusiness.Entities;
 
+[Table("AcquisitionStatuses")]
 public class AcquisitionStatus
 {
     [Key]
@@ -27,25 +28,27 @@ public class AcquisitionNote
     public int AcquisitionID { get; set; }
     public int UserID { get; set; }
     public DateTime CreatedDateTime { get; set; }
-    
+
     [Required, MaxLength(2)]
     public string NoteTypeCode { get; set; } = null!;
-    
+
     [MaxLength(3000)]
     public string? NoteText { get; set; }
 
     public virtual Acquisition Acquisition { get; set; } = null!;
+    [ForeignKey("NoteTypeCode")]
     public virtual NoteType NoteType { get; set; } = null!;
     [ForeignKey("UserID")]
     public virtual User User { get; set; } = null!;
 }
 
+[Table("LetterAgreementStatuses")]
 public class LetterAgreementStatus
 {
     [Key]
     public int LetterAgreementStatusID { get; set; }
     public int LetterAgreementID { get; set; }
-    
+
     [Required, MaxLength(5)]
     public string DealStatusCode { get; set; } = null!;
     public int UserID { get; set; }
@@ -65,14 +68,15 @@ public class LetterAgreementNote
     public int LetterAgreementID { get; set; }
     public int UserID { get; set; }
     public DateTime CreatedDateTime { get; set; }
-    
+
     [Required, MaxLength(2)]
     public string NoteTypeCode { get; set; } = null!;
-    
+
     [MaxLength(3000)]
     public string? NoteText { get; set; }
 
     public virtual LetterAgreement LetterAgreement { get; set; } = null!;
+    [ForeignKey("NoteTypeCode")]
     public virtual NoteType NoteType { get; set; } = null!;
     [ForeignKey("UserID")]
     public virtual User User { get; set; } = null!;

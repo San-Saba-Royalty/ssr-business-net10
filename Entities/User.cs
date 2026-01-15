@@ -24,6 +24,12 @@ public class User
     [StringLength(50)]
     public string? Email { get; set; }
 
+    [StringLength(50)]
+    public string? Title { get; set; }
+
+    [StringLength(24)]
+    public string? PhoneNumber { get; set; }
+
     [StringLength(500)]
     public string? Password { get; set; }
 
@@ -34,26 +40,30 @@ public class User
     public bool IsActive { get; set; }
 
     public bool Administrator { get; set; }
-    
+
     public bool Locked { get; set; }
-    
+
     public DateTime? PasswordExpirationDate { get; set; }
-    
+
     public int NumberFailedAttempts { get; set; }
-    
+
     public DateTime? LockoutExpirationDate { get; set; }
-    
+
     public DateTime? LoginExpirationDate { get; set; }
-    
+
     public int? LastFilterID { get; set; }
 
     public int? LastViewID { get; set; }
-    
+
+    public int? LastAcquisitionID { get; set; }
+
+    public int? LastLetterAgreementID { get; set; }
+
     public bool DisplayToolbar { get; set; }
-    
+
     [StringLength(20)]
     public string? Theme { get; set; }
-    
+
     [StringLength(20)]
     public string? DefaultReportOutput { get; set; }
 
