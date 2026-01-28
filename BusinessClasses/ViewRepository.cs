@@ -19,11 +19,12 @@ public class ViewRepository
     #region View Operations
 
     /// <summary>
-    /// Get all views
+    /// Get all views for a specific module
     /// </summary>
-    public IQueryable<View> GetViewsAsync()
+    public IQueryable<View> GetViewsAsync(string module = "Acquisition")
     {
         return _context.Views
+            .Where(v => v.Module == module)
             .AsNoTracking();
     }
 
@@ -86,19 +87,19 @@ public class ViewRepository
         var viewFields = await _context.ViewFields
             .Where(vf => vf.ViewID == view.ViewID)
             .ToListAsync();
-        
+
         _context.ViewFields.RemoveRange(viewFields);
         _context.Views.Remove(view);
         await _context.SaveChangesAsync();
     }
 
     /// <summary>
-    /// Check if view name already exists
+    /// Check if view name already exists within a module
     /// </summary>
-    public async Task<bool> ViewNameExistsAsync(string viewName, int? excludeViewId = null)
+    public async Task<bool> ViewNameExistsAsync(string viewName, string module = "Acquisition", int? excludeViewId = null)
     {
         var query = _context.Views
-            .Where(v => v.ViewName == viewName);
+            .Where(v => v.ViewName == viewName && v.Module == module);
 
         if (excludeViewId.HasValue)
         {
@@ -164,7 +165,7 @@ public class ViewRepository
         var viewFields = await _context.ViewFields
             .Where(vf => vf.ViewID == viewId)
             .ToListAsync();
-        
+
         _context.ViewFields.RemoveRange(viewFields);
         await _context.SaveChangesAsync();
     }
@@ -178,12 +179,48 @@ public class ViewRepository
         var existingFields = await _context.ViewFields
             .Where(vf => vf.ViewID == viewId)
             .ToListAsync();
-        
+
         _context.ViewFields.RemoveRange(existingFields);
-        
+
         // Add new
         _context.ViewFields.AddRange(newViewFields);
-        
+
+        await _context.SaveChangesAsync();
+    }
+
+    #endregion
+
+    #region User Page Preference Operations
+
+    /// <summary>
+    /// Get user's preferred view for a specific page
+    /// </summary>
+    public async Task<UserPagePreference?> GetUserPagePreferenceAsync(int userId, string pageName)
+    {
+        return await _context.UserPagePreferences
+            .Include(p => p.View)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserID == userId && p.PageName == pageName);
+    }
+
+    /// <summary>
+    /// Save or update user's page preference
+    /// </summary>
+    public async Task SaveUserPagePreferenceAsync(UserPagePreference preference)
+    {
+        var existing = await _context.UserPagePreferences
+            .FirstOrDefaultAsync(p => p.UserID == preference.UserID && p.PageName == preference.PageName);
+
+        if (existing == null)
+        {
+            _context.UserPagePreferences.Add(preference);
+        }
+        else
+        {
+            existing.ViewID = preference.ViewID;
+            _context.UserPagePreferences.Update(existing);
+        }
+
         await _context.SaveChangesAsync();
     }
 

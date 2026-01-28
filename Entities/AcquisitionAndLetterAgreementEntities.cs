@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SSRBusiness.Entities;
 
-[Table("AcquisitionStatuses")]
+[Table("AcquisitionStatus")]
 public class AcquisitionStatus
 {
     [Key]
@@ -15,7 +15,9 @@ public class AcquisitionStatus
     public DateTime StatusDate { get; set; }
     public string? Notes { get; set; }
 
+    [ForeignKey("AcquisitionID")]
     public virtual Acquisition Acquisition { get; set; } = null!;
+    [ForeignKey("DealStatusID")]
     public virtual DealStatus DealStatus { get; set; } = null!;
     [ForeignKey("UserID")]
     public virtual User User { get; set; } = null!;
@@ -35,6 +37,7 @@ public class AcquisitionNote
     [MaxLength(3000)]
     public string? NoteText { get; set; }
 
+    [ForeignKey("AcquisitionID")]
     public virtual Acquisition Acquisition { get; set; } = null!;
     [ForeignKey("NoteTypeCode")]
     public virtual NoteType NoteType { get; set; } = null!;
@@ -42,7 +45,7 @@ public class AcquisitionNote
     public virtual User User { get; set; } = null!;
 }
 
-[Table("LetterAgreementStatuses")]
+[Table("LetterAgreementStatus")]
 public class LetterAgreementStatus
 {
     [Key]
@@ -55,7 +58,9 @@ public class LetterAgreementStatus
     public DateTime StatusDate { get; set; }
     public string? Notes { get; set; }
 
+    [ForeignKey("LetterAgreementID")]
     public virtual LetterAgreement LetterAgreement { get; set; } = null!;
+    [ForeignKey("DealStatusCode")]
     public virtual LetterAgreementDealStatus LetterAgreementDealStatus { get; set; } = null!;
     [ForeignKey("UserID")]
     public virtual User User { get; set; } = null!;
@@ -75,6 +80,7 @@ public class LetterAgreementNote
     [MaxLength(3000)]
     public string? NoteText { get; set; }
 
+    [ForeignKey("LetterAgreementID")]
     public virtual LetterAgreement LetterAgreement { get; set; } = null!;
     [ForeignKey("NoteTypeCode")]
     public virtual NoteType NoteType { get; set; } = null!;

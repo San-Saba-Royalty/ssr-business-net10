@@ -10,6 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
+    <PackageReference Include="Azure.Storage.Files.Shares" Version="12.21.0" />
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.0.1" />
     <PackageReference Include="DocumentFormat.OpenXml.Framework" Version="3.0.1" />
     <PackageReference Include="FastReport.OpenSource" Version="2025.1.0" />
@@ -33,6 +35,11 @@
     <Compile Remove="SSRReports\**" />
     <EmbeddedResource Remove="SSRReports\**" />
     <None Remove="SSRReports\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DocSharp\src\DocSharp.Binary\DocSharp.Binary.Common\DocSharp.Binary.Common.csproj" />
+    <ProjectReference Include="..\DocSharp\src\DocSharp.Binary\DocSharp.Binary.Doc\DocSharp.Binary.Doc.csproj" />
   </ItemGroup>
 
 </Project>

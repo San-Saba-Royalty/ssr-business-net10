@@ -4,69 +4,182 @@ using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using SSRBusiness.Entities;
 using System.Text.RegularExpressions;
+using DocSharp.Binary.DocFileFormat;
+using DocSharp.Binary.OpenXmlLib.WordprocessingML;
+using DocSharp.Binary.WordprocessingMLMapping;
+using DocSharp.Binary.StructuredStorage.Reader;
 
 namespace SSRBusiness.BusinessClasses;
 
 public class WordTemplateEngine
 {
+    /// <summary>
+    /// Converts a .doc file to .docx format using DocSharp.Binary (b2xtranslator).
+    /// Returns the path to a .docx file (either original or converted temp file).
+    /// </summary>
+    /// <param name="sourcePath">Path to the source .doc or .docx file</param>
+    /// <returns>Tuple of (docxPath, needsCleanup) where needsCleanup indicates if we created a temp file</returns>
+    private (string docxPath, bool needsCleanup) EnsureDocxFormat(string sourcePath)
+    {
+        var extension = Path.GetExtension(sourcePath);
+
+        if (extension.Equals(".docx", StringComparison.OrdinalIgnoreCase))
+        {
+            return (sourcePath, false); // Already .docx, no conversion needed
+        }
+
+        if (extension.Equals(".doc", StringComparison.OrdinalIgnoreCase))
+        {
+            // Convert .doc to .docx using DocSharp.Binary (b2xtranslator)
+            var docxPath = Path.Combine(Path.GetTempPath(), $"{Path.GetFileNameWithoutExtension(sourcePath)}_{Guid.NewGuid()}.docx");
+
+            using (var reader = new StructuredStorageReader(sourcePath))
+            {
+                var doc = new WordDocument(reader);
+
+                // Create the .docx output
+                using var docxStream = File.Create(docxPath);
+                var docxDoc = DocSharp.Binary.OpenXmlLib.WordprocessingML.WordprocessingDocument.Create(docxStream, DocSharp.Binary.OpenXmlLib.WordprocessingDocumentType.Document);
+
+                // Use the Converter to transform .doc to .docx
+                Converter.Convert(doc, docxDoc);
+
+                docxDoc.Dispose();
+            }
+
+            return (docxPath, true);
+        }
+
+        throw new NotSupportedException($"Unsupported file format: {extension}. Only .doc and .docx files are supported.");
+    }
+
+    /// <summary>
+    /// Public method to convert a .doc file to .docx format if necessary.
+    /// Returns the path to a .docx file (either original or converted temp file).
+    /// </summary>
+    /// <param name="sourcePath">Path to the source .doc or .docx file</param>
+    /// <returns>Tuple of (docxPath, needsCleanup) where needsCleanup indicates if we created a temp file</returns>
+    public (string docxPath, bool needsCleanup) ConvertToDocxIfNeeded(string sourcePath)
+    {
+        return EnsureDocxFormat(sourcePath);
+    }
+
     public void CreateMergeDocument(string sourcePath, string destPath, Acquisition acquisition, User? user, string? documentTemplateID = null)
+    {
+        CreateMergeDocument(sourcePath, destPath, acquisition, user, null, documentTemplateID);
+    }
+
+    /// <summary>
+    /// Creates a merged document with context-aware entity selection.
+    /// When context specifies a CountyId, OperatorId, or BuyerId, only that entity is merged
+    /// for singular placeholders, matching legacy behavior.
+    /// </summary>
+    public void CreateMergeDocument(string sourcePath, string destPath, Acquisition acquisition, User? user, DocumentGenerationContext? context, string? documentTemplateID = null)
     {
         if (!File.Exists(sourcePath)) throw new FileNotFoundException("Template not found", sourcePath);
 
-        // Copy template to destination
-        File.Copy(sourcePath, destPath, true);
+        // Convert .doc to .docx if necessary
+        var (docxSourcePath, needsCleanup) = EnsureDocxFormat(sourcePath);
 
-        using (WordprocessingDocument doc = WordprocessingDocument.Open(destPath, true))
+        try
         {
-            var body = doc.MainDocumentPart?.Document.Body;
-            if (body != null)
+            // Copy template to destination (ensure .docx extension)
+            var actualDestPath = Path.ChangeExtension(destPath, ".docx");
+            File.Copy(docxSourcePath, actualDestPath, true);
+
+            using (DocumentFormat.OpenXml.Packaging.WordprocessingDocument doc = DocumentFormat.OpenXml.Packaging.WordprocessingDocument.Open(actualDestPath, true))
             {
-                MergeGlobalData(body);
-                if (user != null) MergeUserData(user, body);
-                MergeAcquisitionData(acquisition, body);
-
-                // Merge sub-entities
-                // Legacy logic was complex with conditionals on documentType.
-                // We will merge ALL available data that matches placeholders. 
-                // If placeholders are unique, this is safe.
-
-                foreach (var seller in acquisition.AcquisitionSellers)
+                var body = doc.MainDocumentPart?.Document.Body;
+                if (body != null)
                 {
-                    MergeAcquisitionSellerData(seller, body);
+                    MergeGlobalData(body);
+                    if (user != null) MergeUserData(user, body);
+                    MergeAcquisitionData(acquisition, body);
+
+                    // Merge sub-entities
+                    foreach (var seller in acquisition.AcquisitionSellers)
+                    {
+                        MergeAcquisitionSellerData(seller, body);
+                    }
+
+                    foreach (var buyer in acquisition.AcquisitionBuyers)
+                    {
+                        MergeBuyerData(buyer, documentTemplateID, body);
+                    }
+
+                    // Context-aware County/Operator merging:
+                    // If context specifies a specific ID, merge only that entity for singular placeholders.
+                    // Otherwise, fall back to first-found behavior.
+                    if (context?.CountyId.HasValue == true)
+                    {
+                        var selectedCounty = acquisition.AcquisitionCounties
+                            .FirstOrDefault(c => c.AcquisitionCountyID == context.CountyId.Value);
+                        if (selectedCounty != null)
+                        {
+                            MergeSingleCountyData(selectedCounty, documentTemplateID, body, acquisition.AcquisitionID);
+                        }
+                    }
+                    else if (acquisition.AcquisitionCounties.Any())
+                    {
+                        MergeSingleCountyData(acquisition.AcquisitionCounties.First(), documentTemplateID, body, acquisition.AcquisitionID);
+                    }
+
+                    if (context?.OperatorId.HasValue == true)
+                    {
+                        var selectedOperator = acquisition.AcquisitionOperators
+                            .FirstOrDefault(o => o.AcquisitionOperatorID == context.OperatorId.Value);
+                        if (selectedOperator != null)
+                        {
+                            MergeSingleOperatorData(selectedOperator, documentTemplateID, body, acquisition.AcquisitionID);
+                        }
+                    }
+                    else if (acquisition.AcquisitionOperators.Any())
+                    {
+                        MergeSingleOperatorData(acquisition.AcquisitionOperators.First(), documentTemplateID, body, acquisition.AcquisitionID);
+                    }
+
+                    MergeAcquisitionUnitData(acquisition, body);
+                    MergeAcquisitionCountyData(acquisition, body); // Lists
+                    MergeAcquisitionOperatorData(acquisition, body); // Lists
+
+                    // Merge custom fields from context if provided
+                    if (context?.CustomFields?.Count > 0)
+                    {
+                        MergeCustomFields(doc, context.CustomFields);
+                    }
+
+                    // Merge barcode-specific context fields if provided
+                    if (context != null)
+                    {
+                        MergeContextData(context, body);
+                    }
+
+                    // Save changes
+                    doc.MainDocumentPart?.Document.Save();
                 }
-
-                foreach (var buyer in acquisition.AcquisitionBuyers)
-                {
-                    MergeBuyerData(buyer, documentTemplateID, body);
-                }
-
-                // Single County/Operator logic in legacy depended on "First" or passed ID.
-                // We will iterate all and replace specific placeholders if they exist, 
-                // but standard placeholders like <CountyName> implies singular context.
-                // Legacy "MergeSingleCountyData" implies generating a doc FOR a county.
-                // If we are generating a generic doc, we might need context.
-                // Logic: If there is only 1 county, merge it. If multiple, ambiguous?
-                // For now, we merge the FIRST one found if placeholders exist.
-
-                if (acquisition.AcquisitionCounties.Any())
-                {
-                    MergeSingleCountyData(acquisition.AcquisitionCounties.First(), documentTemplateID, body, acquisition.AcquisitionID);
-                }
-
-                if (acquisition.AcquisitionOperators.Any())
-                {
-                    MergeSingleOperatorData(acquisition.AcquisitionOperators.First(), documentTemplateID, body, acquisition.AcquisitionID);
-                }
-
-                MergeAcquisitionUnitData(acquisition, body);
-                MergeAcquisitionCountyData(acquisition, body); // Lists
-                MergeAcquisitionOperatorData(acquisition, body); // Lists
-
-                // Save changes
-                doc.MainDocumentPart?.Document.Save();
+            }
+        }
+        finally
+        {
+            // Cleanup converted temp file
+            if (needsCleanup && File.Exists(docxSourcePath))
+            {
+                try { File.Delete(docxSourcePath); } catch { /* Ignore cleanup errors */ }
             }
         }
     }
+
+    /// <summary>
+    /// Merges custom fields from DocTemplateCustomField definitions.
+    /// </summary>
+    private void MergeCustomFields(DocumentFormat.OpenXml.Packaging.WordprocessingDocument doc, Dictionary<string, string> customFields)
+    {
+        foreach (var (tag, value) in customFields)
+        {
+            SearchAndReplace(doc.MainDocumentPart!.Document.Body!, $"<{tag}>", value);
+        }
+    }
+
 
     private void MergeGlobalData(Body body)
     {
@@ -95,6 +208,14 @@ public class WordTemplateEngine
     {
         SearchAndReplace(body, "<UserFirstName>", user.FirstName ?? "");
         SearchAndReplace(body, "<UserLastName>", user.LastName ?? "");
+
+        // Support for <user> placeholder - use full name or fallback to username
+        var fullName = $"{user.FirstName} {user.LastName}".Trim();
+        if (string.IsNullOrEmpty(fullName))
+        {
+            fullName = user.UserName ?? user.Email ?? "";
+        }
+        SearchAndReplace(body, "<user>", fullName);
     }
 
     private void MergeAcquisitionData(Acquisition acq, Body body)
@@ -123,7 +244,20 @@ public class WordTemplateEngine
         SearchAndReplace(body, "<ClosingLetterDate>", DisplayDate(acq.ClosingLetterDate));
         SearchAndReplace(body, "<LienAmount>", DisplayAmount(acq.LienAmount));
 
-        // Add more placeholders as defined in legacy...
+        // Additional Acquisition Placeholders (missing from original)
+        SearchAndReplace(body, "<AcqEffDtOrNow>", DisplayDate(acq.EffectiveDate ?? DateTime.Now));
+        SearchAndReplace(body, "<AcqEffDtOrNow:Long>", DisplayDateLong(acq.EffectiveDate ?? DateTime.Now));
+        SearchAndReplace(body, "<EffectiveDate:Long>", DisplayDateLong(acq.EffectiveDate));
+        SearchAndReplace(body, "<DueDate:Long>", DisplayDateLong(acq.DueDate));
+        SearchAndReplace(body, "<ClosingDate>", DisplayDate(acq.ClosingDate));
+        SearchAndReplace(body, "<ClosingDate:Long>", DisplayDateLong(acq.ClosingDate));
+        SearchAndReplace(body, "<PaidDate>", DisplayDate(acq.PaidDate));
+        SearchAndReplace(body, "<PaidDate:Long>", DisplayDateLong(acq.PaidDate));
+        SearchAndReplace(body, "<CoverSheetDate>", DisplayDate(DateTime.Now));
+        SearchAndReplace(body, "<BorrowerName>", DisplayText(acq.BorrowerName));
+        SearchAndReplace(body, "<BorrowerAddress>", DisplayText(acq.BorrowerAddress));
+        SearchAndReplace(body, "<TotalBonusWords>", NumberToWordConverter.ConvertDollars(acq.TotalBonus ?? 0));
+        SearchAndReplace(body, "<DraftFeeWords>", NumberToWordConverter.ConvertDollars(acq.DraftFee ?? 0));
     }
 
     private void MergeAcquisitionSellerData(AcquisitionSeller seller, Body body)
@@ -144,6 +278,18 @@ public class WordTemplateEngine
         SearchAndReplace(body, "<SellerContactEmail>", seller.ContactEmail ?? "");
         SearchAndReplace(body, "<SellerContactPhone>", seller.ContactPhone ?? "");
         SearchAndReplace(body, "<SellerContactFax>", seller.ContactFax ?? "");
+
+        // Additional Seller Placeholders (missing from original)
+        SearchAndReplace(body, "<SellerAddressBlock>", ConstructAddressBlock(seller.SellerName, seller.AddressLine1, seller.AddressLine2, seller.AddressLine3, seller.City, seller.StateCode, seller.ZipCode));
+        SearchAndReplace(body, "<SellerAddressBlockCSZ>", $"{seller.City}, {seller.StateCode} {seller.ZipCode}");
+        SearchAndReplace(body, "<SellerForeignAddress>", seller.ForeignAddress ?? "");
+        SearchAndReplace(body, "<SellerDeceasedName>", seller.DeceasedName ?? "");
+        SearchAndReplace(body, "<SellerSpouseName>", seller.SpouseName ?? "");
+        SearchAndReplace(body, "<SellerSSN>", seller.SSN ?? "");
+        SearchAndReplace(body, "<SellerSSNMask>", MaskSSN(seller.SSN));
+        SearchAndReplace(body, "<SellerMaritalStatus>", seller.MaritalStatus ?? "");
+        SearchAndReplace(body, "<SellerOwnershipType>", seller.OwnershipType ?? "");
+        SearchAndReplace(body, "<SellerVestingName>", seller.VestingName ?? seller.SellerName ?? "");
     }
 
     private void MergeBuyerData(AcquisitionBuyer acqBuyer, string? templateID, Body body)
@@ -225,6 +371,89 @@ public class WordTemplateEngine
         // We need to implement string generation from AcquisitionUnits related to this County.
         // Doing simplified version:
         // Needs Acquisition -> AcquisitionUnits -> AcqUnitCounties -> filtered by CountyID
+
+        // Merge CAG (County Appraisal Group) data if available
+        MergeCountyAppraisalGroupData(county, body);
+    }
+
+    /// <summary>
+    /// Merges County Appraisal Group (CAG) placeholders.
+    /// Uses the most recent effective appraisal group for the county.
+    /// </summary>
+    private void MergeCountyAppraisalGroupData(County county, Body body)
+    {
+        // Get the most current effective appraisal group for this county
+        var currentCag = county.CountyAppraisalGroups
+            .Where(cag => cag.EffectiveDate <= DateTime.Now)
+            .OrderByDescending(cag => cag.EffectiveDate)
+            .FirstOrDefault();
+
+        if (currentCag?.AppraisalGroup == null)
+        {
+            // Clear CAG placeholders if no appraisal group exists
+            SearchAndReplace(body, "<CAG>", "");
+            SearchAndReplace(body, "<CAGName>", "");
+            SearchAndReplace(body, "<CAGContactName>", "");
+            SearchAndReplace(body, "<CAGAttn>", "");
+            SearchAndReplace(body, "<CAGContactEmail>", "");
+            SearchAndReplace(body, "<CAGContactPhone>", "");
+            SearchAndReplace(body, "<CAGContactFax>", "");
+            SearchAndReplace(body, "<CAGAddress>", "");
+            SearchAndReplace(body, "<CAGState>", "");
+            SearchAndReplace(body, "<CAGStateName>", "");
+            SearchAndReplace(body, "<CAGStateCode>", "");
+            return;
+        }
+
+        var ag = currentCag.AppraisalGroup;
+
+        // Build CAG address block
+        var agAddress = new StringBuilder();
+        if (!string.IsNullOrEmpty(ag.AddressLine1))
+            agAddress.AppendLine(ag.AddressLine1);
+        if (!string.IsNullOrEmpty(ag.AddressLine2))
+            agAddress.AppendLine(ag.AddressLine2);
+        if (!string.IsNullOrEmpty(ag.AddressLine3))
+            agAddress.AppendLine(ag.AddressLine3);
+
+        // City, State Zip line
+        var cityStateZip = new StringBuilder();
+        if (!string.IsNullOrEmpty(ag.City))
+            cityStateZip.Append(ag.City);
+        if (!string.IsNullOrEmpty(ag.StateCode))
+        {
+            if (cityStateZip.Length > 0) cityStateZip.Append(", ");
+            cityStateZip.Append(ag.StateCode);
+        }
+        if (!string.IsNullOrEmpty(ag.ZipCode))
+        {
+            if (cityStateZip.Length > 0) cityStateZip.Append("   ");
+            cityStateZip.Append(ag.ZipCode);
+        }
+        agAddress.Append(cityStateZip);
+
+        // Build full CAG block (Name, Attention, Address)
+        var cagBlock = new StringBuilder();
+        cagBlock.AppendLine(ag.AppraisalGroupName);
+        if (!string.IsNullOrEmpty(ag.Attention))
+            cagBlock.AppendLine(ag.Attention);
+        cagBlock.Append(agAddress);
+
+        // Get state name from county's state relationship
+        string stateName = county.State?.StateName ?? ag.StateCode ?? "";
+
+        // Replace CAG placeholders
+        SearchAndReplace(body, "<CAG>", cagBlock.ToString());
+        SearchAndReplace(body, "<CAGName>", ag.AppraisalGroupName);
+        SearchAndReplace(body, "<CAGContactName>", DisplayText(ag.ContactName));
+        SearchAndReplace(body, "<CAGAttn>", DisplayText(ag.Attention));
+        SearchAndReplace(body, "<CAGContactEmail>", DisplayText(ag.ContactEmail));
+        SearchAndReplace(body, "<CAGContactPhone>", DisplayText(ag.ContactPhone));
+        SearchAndReplace(body, "<CAGContactFax>", DisplayText(ag.ContactFax));
+        SearchAndReplace(body, "<CAGAddress>", agAddress.ToString());
+        SearchAndReplace(body, "<CAGState>", DisplayText(stateName));
+        SearchAndReplace(body, "<CAGStateName>", DisplayText(stateName));
+        SearchAndReplace(body, "<CAGStateCode>", DisplayText(ag.StateCode));
     }
 
     private void MergeSingleOperatorData(AcquisitionOperator acqOper, string? templateID, Body body, int acqID)
@@ -264,7 +493,8 @@ public class WordTemplateEngine
     {
         if (acq.AcquisitionUnits == null || !acq.AcquisitionUnits.Any()) return;
 
-        var unitNames = acq.AcquisitionUnits
+        var units = acq.AcquisitionUnits.ToList();
+        var unitNames = units
             .Select(u => u.UnitName)
             .Where(n => !string.IsNullOrEmpty(n))
             .Distinct()
@@ -274,14 +504,51 @@ public class WordTemplateEngine
         SearchAndReplace(body, "<UnitList>", string.Join(", ", unitNames));
         SearchAndReplace(body, "<UnitListVertical>", string.Join("\v", unitNames)); // \v for manual line break
 
-        var legals = acq.AcquisitionUnits
+        var legals = units
             .Select(u => u.LegalDescription)
             .Where(l => !string.IsNullOrEmpty(l))
             .Distinct()
             .ToList();
-            
+
         SearchAndReplace(body, "<UnitLegalDescription>", string.Join("; ", legals));
         SearchAndReplace(body, "<UnitLegalDescriptionList>", string.Join("\v", legals));
+
+        // Single unit placeholders (for first unit if multiple)
+        var firstUnit = units.FirstOrDefault();
+        if (firstUnit != null)
+        {
+            SearchAndReplace(body, "<UnitName>", firstUnit.UnitName ?? "");
+            SearchAndReplace(body, "<UnitInterest>", DisplayPercent(firstUnit.OwnershipInterest));
+            SearchAndReplace(body, "<UnitTypeCode>", firstUnit.UnitTypeCode ?? "");
+            SearchAndReplace(body, "<UnRecDt>", DisplayDate(firstUnit.RecordingDate));
+            SearchAndReplace(body, "<UnVol#>", firstUnit.VolumeNumber ?? "");
+            SearchAndReplace(body, "<UnPage#>", firstUnit.PageNumber ?? "");
+            SearchAndReplace(body, "<GrossAcres>", DisplayAcres(firstUnit.GrossAcres));
+            SearchAndReplace(body, "<NetAcres>", DisplayAcres(firstUnit.NetAcres));
+            SearchAndReplace(body, "<Surveys>", firstUnit.Surveys ?? "");
+            SearchAndReplace(body, "<UnitNMPI>", DisplayDecimal(firstUnit.NMPI));
+            SearchAndReplace(body, "<UnitDecimalsText>", DisplayDecimal(firstUnit.Decimals));
+        }
+
+        // County/State lists from units
+        var countyStates = units
+            .SelectMany(u => u.AcqUnitCounties.Where(c => c.County != null))
+            .Select(uc => $"{uc.County!.CountyName}, {uc.County.StateCode}")
+            .Distinct()
+            .OrderBy(s => s)
+            .ToList();
+
+        SearchAndReplace(body, "<UnitCountyStateList>", string.Join(", ", countyStates));
+        SearchAndReplace(body, "<UnitCountyStateListTbl>", string.Join("\v", countyStates));
+
+        // Interest type names
+        var interestTypes = units
+            .Where(u => u.UnitType != null)
+            .Select(u => u.UnitType!.UnitTypeDesc)
+            .Where(n => !string.IsNullOrEmpty(n))
+            .Distinct()
+            .ToList();
+        SearchAndReplace(body, "<UnitInterestTypeNameList>", string.Join(", ", interestTypes));
     }
 
     private void MergeAcquisitionCountyData(Acquisition acq, Body body)
@@ -314,6 +581,26 @@ public class WordTemplateEngine
         SearchAndReplace(body, "<OperatorListVertical>", string.Join("\v", operatorNames));
     }
 
+    private void MergeContextData(DocumentGenerationContext context, Body body)
+    {
+        // Handle barcode-specific placeholders
+        if (!string.IsNullOrEmpty(context.DocumentTypeCode))
+        {
+            SearchAndReplace(body, "<DocumentType>", context.DocumentTypeCode);
+        }
+
+        if (!string.IsNullOrEmpty(context.DocumentDescription))
+        {
+            SearchAndReplace(body, "<DocumentDescription>", context.DocumentDescription);
+        }
+
+        // Handle other context-specific placeholders as needed
+        if (!string.IsNullOrEmpty(context.StateCode))
+        {
+            SearchAndReplace(body, "<StateCode>", context.StateCode);
+        }
+    }
+
     // --- Helpers ---
     private string ConstructAddress(string? l1, string? l2, string? l3, string? city, string? state, string? zip)
     {
@@ -325,9 +612,67 @@ public class WordTemplateEngine
         return sb.ToString();
     }
 
+    private string ConstructAddressBlock(string? name, string? l1, string? l2, string? l3, string? city, string? state, string? zip)
+    {
+        var sb = new StringBuilder();
+        if (!string.IsNullOrEmpty(name)) sb.AppendLine(name);
+        if (!string.IsNullOrEmpty(l1)) sb.AppendLine(l1);
+        if (!string.IsNullOrEmpty(l2)) sb.AppendLine(l2);
+        if (!string.IsNullOrEmpty(l3)) sb.AppendLine(l3);
+        sb.Append($"{city}, {state} {zip}");
+        return sb.ToString();
+    }
+
+    private static string MaskSSN(string? ssn)
+    {
+        if (string.IsNullOrEmpty(ssn) || ssn.Length < 4) return "";
+        // Return only last 4 digits with XXX-XX- prefix
+        return $"XXX-XX-{ssn[^4..]}";
+    }
+
     private string DisplayDate(DateTime? dt) => dt.HasValue ? dt.Value.ToString("MM/dd/yyyy") : "";
+    private string DisplayDate(DateTime dt) => dt.ToString("MM/dd/yyyy");
+    private string DisplayDateLong(DateTime? dt) => dt.HasValue ? dt.Value.ToString("MMMM d, yyyy") : "";
+    private string DisplayDateLong(DateTime dt) => dt.ToString("MMMM d, yyyy");
+    private string DisplayDateWithOrdinal(DateTime? dt)
+    {
+        if (!dt.HasValue) return "";
+        var d = dt.Value;
+        var suffix = GetOrdinalSuffix(d.Day);
+        return $"{d:MMMM} {d.Day}{suffix}, {d.Year}";
+    }
+    private static string GetOrdinalSuffix(int day) => (day % 10, day / 10 % 10) switch
+    {
+        (1, not 1) => "st",
+        (2, not 1) => "nd",
+        (3, not 1) => "rd",
+        _ => "th"
+    };
     private string DisplayAmount(decimal? amt) => amt.HasValue ? amt.Value.ToString("##,##0.00") : "";
+    private string DisplayPercent(decimal? pct) => pct.HasValue ? pct.Value.ToString("0.########") : "";
+    private string DisplayAcres(decimal? acres) => acres.HasValue ? acres.Value.ToString("0.00") : "";
+    private string DisplayDecimal(decimal? dec) => dec.HasValue ? dec.Value.ToString("G") : "";
     private string DisplayText(string? txt) => txt ?? "";
+
+    /// <summary>
+    /// Performs case-insensitive string replacement for all occurrences
+    /// </summary>
+    private string ReplaceIgnoreCase(string source, string oldValue, string newValue)
+    {
+        if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(oldValue))
+            return source;
+
+        var result = source;
+        var index = 0;
+
+        while ((index = result.IndexOf(oldValue, index, StringComparison.OrdinalIgnoreCase)) >= 0)
+        {
+            result = result.Remove(index, oldValue.Length).Insert(index, newValue);
+            index += newValue.Length; // Move past the replacement
+        }
+
+        return result;
+    }
 
     // Robust Search and Replace
     private void SearchAndReplace(Body body, string placeholder, string replacement)
@@ -344,7 +689,7 @@ public class WordTemplateEngine
     private void ReplaceTextInParagraph(Paragraph paragraph, string placeholder, string replacement)
     {
         var text = paragraph.InnerText;
-        if (!text.Contains(placeholder)) return;
+        if (!text.Contains(placeholder, StringComparison.OrdinalIgnoreCase)) return;
 
         // The placeholder exists in this paragraph.
         // To properly replace while respecting runs, we need to map the Runs.
@@ -356,11 +701,11 @@ public class WordTemplateEngine
         // Note: multiple occurrences?
         // We loop until no occurrences.
 
-        while (paragraph.InnerText.Contains(placeholder))
+        while (paragraph.InnerText.Contains(placeholder, StringComparison.OrdinalIgnoreCase))
         {
             // Re-calculate text and indices
             string docText = paragraph.InnerText;
-            int index = docText.IndexOf(placeholder);
+            int index = docText.IndexOf(placeholder, StringComparison.OrdinalIgnoreCase);
             if (index < 0) break;
 
             var runs = paragraph.Descendants<Run>().ToList();
@@ -401,7 +746,7 @@ public class WordTemplateEngine
                 {
                     var textElem = startRun.GetFirstChild<Text>();
                     if (textElem != null)
-                        textElem.Text = textElem.Text.Remove(startRunOffset, placeholder.Length).Insert(startRunOffset, replacement);
+                        textElem.Text = ReplaceIgnoreCase(textElem.Text, placeholder, replacement);
                 }
                 else
                 {

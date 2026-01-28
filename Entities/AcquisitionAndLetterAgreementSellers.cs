@@ -45,6 +45,29 @@ public class AcquisitionSeller
     public DateTime CreatedOn { get; set; }
     public DateTime LastUpdatedOn { get; set; }
 
+    // Additional properties needed by business logic (not in database)
+    [NotMapped, MaxLength(500)]
+    public string? ForeignAddress { get; set; }
+
+    [NotMapped, MaxLength(100)]
+    public string? DeceasedName { get; set; }
+
+    [NotMapped, MaxLength(100)]
+    public string? SpouseName { get; set; }
+
+    [NotMapped, MaxLength(15)]
+    public string? SSN { get; set; }
+
+    [NotMapped, MaxLength(20)]
+    public string? MaritalStatus { get; set; }
+
+    [NotMapped, MaxLength(50)]
+    public string? OwnershipType { get; set; }
+
+    [NotMapped, MaxLength(100)]
+    public string? VestingName { get; set; }
+
+    [ForeignKey("AcquisitionID")]
     public virtual Acquisition Acquisition { get; set; } = null!;
 }
 
@@ -88,5 +111,6 @@ public class LetterAgreementSeller
     public DateTime CreatedOn { get; set; }
     public DateTime LastUpdatedOn { get; set; }
 
+    [ForeignKey("LetterAgreementID")]
     public virtual LetterAgreement LetterAgreement { get; set; } = null!;
 }

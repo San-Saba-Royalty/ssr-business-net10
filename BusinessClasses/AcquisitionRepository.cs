@@ -34,7 +34,13 @@ public class AcquisitionRepository : BaseRepository<Acquisition>
 
     public async Task<List<Acquisition>> GetAcquisitionListAsync()
     {
-        return await DbSet.OrderBy(a => a.AcquisitionID).ToListAsync();
+        return await DbSet
+            .Include(a => a.AcquisitionSellers)
+            .Include(a => a.AcquisitionOperators).ThenInclude(ao => ao.Operator)
+            .Include(a => a.AcquisitionCounties).ThenInclude(ac => ac.County)
+            .Include(a => a.AcquisitionUnits)
+            .OrderBy(a => a.AcquisitionID)
+            .ToListAsync();
     }
 
     public void DeleteAcquisition(Acquisition entity)

@@ -107,6 +107,16 @@ public class Acquisition
     [MaxLength(5)]
     public string? WhoPaysReferral { get; set; }
 
+    // Additional properties needed by business logic (not in database)
+    [NotMapped]
+    public DateTime? ClosingDate { get; set; }
+
+    [NotMapped, MaxLength(100)]
+    public string? BorrowerName { get; set; }
+
+    [NotMapped, MaxLength(500)]
+    public string? BorrowerAddress { get; set; }
+
     public virtual User? LandMan { get; set; }
     public virtual ICollection<AcquisitionBuyer> AcquisitionBuyers { get; set; } = new List<AcquisitionBuyer>();
     public virtual ICollection<AcquisitionChange> AcquisitionChanges { get; set; } = new List<AcquisitionChange>();

@@ -57,6 +57,7 @@ public class SsrDbContext : DbContext
     public DbSet<CountyContact> CountyContacts { get; set; }
     public DbSet<CurativeType> CurativeTypes { get; set; }
     public DbSet<DealStatus> DealStatuses { get; set; }
+    public DbSet<ChangeType> ChangeTypes { get; set; }
     public DbSet<DisplayField> DisplayFields { get; set; }
     public DbSet<DocumentTemplate> DocumentTemplates { get; set; }
     public DbSet<DocumentType> DocumentTypes { get; set; }
@@ -91,6 +92,7 @@ public class SsrDbContext : DbContext
     public DbSet<UserRole> UserRoles { get; set; }
     public DbSet<View> Views { get; set; }
     public DbSet<ViewField> ViewFields { get; set; }
+    public DbSet<UserPagePreference> UserPagePreferences { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

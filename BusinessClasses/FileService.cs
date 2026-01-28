@@ -24,6 +24,53 @@ public class FileService : IFileService
         }
     }
 
+    private string GetContainerPath(string containerName)
+    {
+        // Simulate containers with subdirectories in temp or a configured root
+        // Using Path.GetTempPath() + SSR_Storage + containerName to emulate storage not in webroot,
+        // or we could use webroot if injected. But FileService doesn't have WebHostEnvironment injected currently.
+        // Let's use a persistent temp location for now ensuring it works.
+        var path = Path.Combine(Path.GetTempPath(), "SSR_Storage", containerName);
+        if (!Directory.Exists(path)) Directory.CreateDirectory(path);
+        return path;
+    }
+
+    public async Task<string> UploadFileAsync(string containerName, string fileName, Stream content)
+    {
+        var containerPath = GetContainerPath(containerName);
+        var filePath = Path.Combine(containerPath, fileName);
+        
+        using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+        {
+            await content.CopyToAsync(fileStream);
+        }
+        
+        return filePath;
+    }
+
+    public async Task<Stream> DownloadFileAsync(string containerName, string fileName)
+    {
+        var containerPath = GetContainerPath(containerName);
+        var filePath = Path.Combine(containerPath, fileName);
+        
+        if (!File.Exists(filePath)) throw new FileNotFoundException($"File {fileName} not found in {containerName}");
+        
+        return new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+    }
+
+    public Task<bool> DeleteFileAsync(string containerName, string fileName)
+    {
+        var containerPath = GetContainerPath(containerName);
+        var filePath = Path.Combine(containerPath, fileName);
+        
+        if (File.Exists(filePath))
+        {
+            File.Delete(filePath);
+            return Task.FromResult(true);
+        }
+        return Task.FromResult(false);
+    }
+
     public async Task<string> SaveTempFileAsync(string fileName, byte[] content)
     {
         var fileId = Guid.NewGuid().ToString();

@@ -150,6 +150,93 @@ public class AcquisitionDocumentRepository
 
     #endregion
 
+    #region Multi-Table Search
+
+    /// <summary>
+    /// Search for acquisition documents
+    /// </summary>
+    /// <param name="searchText">Text to search for (in document location/filename)</param>
+    /// <param name="includeDetails">Whether to include related acquisition details</param>
+    /// <returns>List of search results</returns>
+    public async Task<List<DocumentSearchResultItem>> SearchDocumentsAsync(string searchText, bool includeDetails)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+            return new List<DocumentSearchResultItem>();
+
+        var query = _context.AcquisitionDocuments
+            .Include(ad => ad.User)
+            .AsQueryable();
+
+        // Basic Filter
+        query = query.Where(ad => ad.DocumentLocation != null && ad.DocumentLocation.Contains(searchText));
+
+        if (includeDetails)
+        {
+            query = query
+                .Include(ad => ad.Acquisition)
+                .ThenInclude(a => a!.AcquisitionSellers) // No .ThenInclude(Seller) as it doesn't exist
+                .Include(ad => ad.Acquisition)
+                .ThenInclude(a => a!.AcquisitionCounties).ThenInclude(c => c.County)
+                .Include(ad => ad.Acquisition)
+                .ThenInclude(a => a!.AcquisitionOperators).ThenInclude(o => o.Operator)
+                .Include(ad => ad.Acquisition)
+                .ThenInclude(a => a!.AcquisitionBuyers).ThenInclude(b => b.Buyer);
+        }
+
+        var entities = await query
+            .OrderByDescending(ad => ad.CreatedOn)
+            .Take(100) // Limit results
+            .ToListAsync();
+
+        // Project to DTO
+        var results = new List<DocumentSearchResultItem>();
+
+        foreach (var doc in entities)
+        {
+            var item = new DocumentSearchResultItem
+            {
+                AcquisitionDocumentID = doc.AcquisitionDocumentID,
+                AcquisitionID = doc.AcquisitionID,
+                DocumentLocation = doc.DocumentLocation,
+                CreatedOn = doc.CreatedOn,
+                CreatedByName = doc.User?.UserName ?? "Unknown"
+            };
+
+            if (includeDetails && doc.Acquisition != null)
+            {
+                var acq = doc.Acquisition;
+
+                // Sellers - use SellerName directly from AcquisitionSeller
+                var sellers = acq.AcquisitionSellers
+                    .Select(s => s.SellerName)
+                    .Where(s => !string.IsNullOrEmpty(s))
+                    .ToList();
+                item.SellerName = sellers.Any() ? string.Join(", ", sellers) : null;
+
+                // Effective Date
+                item.EffectiveDate = acq.EffectiveDate;
+
+                // Counties
+                var counties = acq.AcquisitionCounties.Select(c => c.County?.CountyName).Where(c => !string.IsNullOrEmpty(c)).ToList();
+                item.Counties = counties.Any() ? string.Join(", ", counties) : null;
+
+                // Operators
+                var operators = acq.AcquisitionOperators.Select(o => o.Operator?.OperatorName).Where(o => !string.IsNullOrEmpty(o)).ToList();
+                item.Operators = operators.Any() ? string.Join(", ", operators) : null;
+
+                // Buyers
+                var buyers = acq.AcquisitionBuyers.Select(b => b.Buyer?.BuyerName).Where(b => !string.IsNullOrEmpty(b)).ToList();
+                item.Buyers = buyers.Any() ? string.Join(", ", buyers) : null;
+            }
+
+            results.Add(item);
+        }
+
+        return results;
+    }
+
+    #endregion
+
     #region Counties and Operators for Document Generation
 
     /// <summary>

@@ -69,6 +69,25 @@ public class View
     public string ViewName { get; set; } = null!;
     
     public virtual ICollection<ViewField> ViewFields { get; set; } = new List<ViewField>();
+    
+    [MaxLength(50)]
+    public string Module { get; set; } = "Acquisition";
+}
+
+public class UserPagePreference
+{
+    [Key]
+    public int PreferenceID { get; set; }
+    
+    public int UserID { get; set; }
+    
+    [Required, MaxLength(50)]
+    public string PageName { get; set; } = null!;
+    
+    public int ViewID { get; set; }
+    
+    public virtual User User { get; set; } = null!;
+    public virtual View View { get; set; } = null!;
 }
 
 public class ViewField

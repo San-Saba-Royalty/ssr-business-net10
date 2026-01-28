@@ -5,27 +5,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SSRBusiness.Entities;
 
-public class LetterAgreementChange
-{
-    [Key]
-    public int LetterAgreementChangeID { get; set; }
-    public int LetterAgreementID { get; set; }
-    public int UserID { get; set; }
-    public DateTime ChangeDate { get; set; }
-
-    [Required, MaxLength(5)]
-    public string ChangeTypeCode { get; set; } = null!;
-
-    [MaxLength(250)]
-    public string? FieldName { get; set; }
-    public string? OldValue { get; set; }
-    public string? NewValue { get; set; }
-
-    public virtual LetterAgreement LetterAgreement { get; set; } = null!;
-    [ForeignKey("UserID")]
-    public virtual User User { get; set; } = null!;
-}
-
 public class LetterAgreementOperator
 {
     [Key]
@@ -33,7 +12,9 @@ public class LetterAgreementOperator
     public int LetterAgreementID { get; set; }
     public int OperatorID { get; set; }
 
+    [ForeignKey("LetterAgreementID")]
     public virtual LetterAgreement LetterAgreement { get; set; } = null!;
+    [ForeignKey("OperatorID")]
     public virtual Operator Operator { get; set; } = null!;
 }
 
@@ -44,7 +25,9 @@ public class LetterAgreementCounty
     public int LetterAgreementID { get; set; }
     public int CountyID { get; set; }
 
+    [ForeignKey("LetterAgreementID")]
     public virtual LetterAgreement LetterAgreement { get; set; } = null!;
+    [ForeignKey("CountyID")]
     public virtual County County { get; set; } = null!;
 }
 
@@ -62,7 +45,9 @@ public class LetterAgreementReferrer
     public decimal? ReferralPercent { get; set; }
     public bool SellerPaysReferralAmount { get; set; }
 
+    [ForeignKey("LetterAgreementID")]
     public virtual LetterAgreement LetterAgreement { get; set; } = null!;
+    [ForeignKey("ReferrerID")]
     public virtual Referrer Referrer { get; set; } = null!;
 }
 

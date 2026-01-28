@@ -14,11 +14,5 @@ public class DocTemplateCustomField
     [Required, MaxLength(50)]
     public string CustomTag { get; set; } = null!;
 
-    [Required, MaxLength(50)]
-    public string TagName { get; set; } = null!;
-
-    [MaxLength(200)]
-    public string? DisplayName { get; set; }
-
     public virtual DocumentTemplate DocumentTemplate { get; set; } = null!;
 }

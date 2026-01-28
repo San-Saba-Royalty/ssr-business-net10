@@ -76,16 +76,90 @@ public class UserPasswordHistory
 }
 
 // Stub classes - to be fully implemented
+[Table("ChangeTypes")]
+public class ChangeType
+{
+    [Key]
+    [MaxLength(5)]
+    public string ChangeTypeCode { get; set; } = null!;
+
+    [MaxLength(50)]
+    public string? ChangeTypeDesc { get; set; }
+
+    public virtual ICollection<AcquisitionChange> AcquisitionChanges { get; set; } = new List<AcquisitionChange>();
+    public virtual ICollection<LetterAgreementChange> LetterAgreementChanges { get; set; } = new List<LetterAgreementChange>();
+}
+
 [Table("AcquisitionChanges")]
 public class AcquisitionChange
 {
     [Key]
     public int AcquisitionChangeId { get; set; }
+    
     public int AcquisitionId { get; set; }
+    
+    [Required]
     public int UserId { get; set; }
+    
+    [Required]
+    [MaxLength(5)]
+    public string ChangeTypeCode { get; set; } = null!;
+    
+    public DateTime ChangeDate { get; set; }
+    
+    [MaxLength(100)]
+    public string? FieldName { get; set; }
+    
+    [MaxLength(500)]
+    public string? NewValue { get; set; }
+    
+    [MaxLength(500)]
+    public string? OldValue { get; set; }
 
     [ForeignKey("UserId")]
     public virtual User User { get; set; } = null!;
+    
+    [ForeignKey("AcquisitionId")]
+    public virtual Acquisition? Acquisition { get; set; }
+    
+    [ForeignKey("ChangeTypeCode")]
+    public virtual ChangeType? ChangeType { get; set; }
+}
+
+[Table("LetterAgreementChanges")]
+public class LetterAgreementChange
+{
+    [Key]
+    public int LetterAgreementChangeId { get; set; }
+    
+    public int LetterAgreementId { get; set; }
+    
+    [Required]
+    public int UserId { get; set; }
+    
+    [Required]
+    [MaxLength(5)]
+    public string ChangeTypeCode { get; set; } = null!;
+    
+    public DateTime ChangeDate { get; set; }
+    
+    [MaxLength(100)]
+    public string? FieldName { get; set; }
+    
+    [MaxLength(500)]
+    public string? NewValue { get; set; }
+    
+    [MaxLength(500)]
+    public string? OldValue { get; set; }
+
+    [ForeignKey("UserId")]
+    public virtual User User { get; set; } = null!;
+    
+    [ForeignKey("LetterAgreementId")]
+    public virtual LetterAgreement? LetterAgreement { get; set; }
+    
+    [ForeignKey("ChangeTypeCode")]
+    public virtual ChangeType? ChangeType { get; set; }
 }
 
 [Table("AcquisitionDocuments")]

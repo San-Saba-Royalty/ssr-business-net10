@@ -41,4 +41,5 @@ public class County
     public virtual State? State { get; set; }
     
     public virtual ICollection<CountyContact> CountyContacts { get; set; } = new List<CountyContact>();
+    public virtual ICollection<CountyAppraisalGroup> CountyAppraisalGroups { get; set; } = new List<CountyAppraisalGroup>();
 }

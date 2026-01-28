@@ -46,6 +46,19 @@ public class AcquisitionUnit
     public char? RangeDir { get; set; }
     public int? SectionNum { get; set; }
 
+    // Additional properties needed by business logic (not in database)
+    [NotMapped]
+    public decimal? OwnershipInterest { get; set; }
+
+    [NotMapped]
+    public DateTime? RecordingDate { get; set; }
+
+    [NotMapped]
+    public decimal? NMPI { get; set; }
+
+    [NotMapped]
+    public decimal? Decimals { get; set; }
+
     public virtual Acquisition Acquisition { get; set; } = null!;
     [ForeignKey("UnitTypeCode")]
     public virtual UnitType? UnitType { get; set; }

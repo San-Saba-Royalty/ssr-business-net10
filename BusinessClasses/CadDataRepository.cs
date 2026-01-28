@@ -50,7 +50,7 @@ public class CadDataRepository
                     {
                         sql.Append(" OR ");
                     }
-                    
+
                     // Logic from GetSearchClause2 in legacy code:
                     var searchItems = validCrit[i].Split(' ', StringSplitOptions.RemoveEmptyEntries);
                     sql.Append("(");
@@ -138,17 +138,17 @@ public class CadDataRepository
                             if (!rdr.IsDBNull(pos)) itm.OperatorName = rdr.GetString(pos); pos++;
                             if (!rdr.IsDBNull(pos)) itm.Field = rdr.GetString(pos); pos++;
                             if (!rdr.IsDBNull(pos)) itm.Intyp = rdr.GetString(pos); pos++;
-                            
+
                             // Interest is double in SELECT
                             if (!rdr.IsDBNull(pos)) itm.InterestValue = rdr.GetDouble(pos); pos++;
-                            itm.Interest = itm.InterestValue.HasValue ? itm.InterestValue.ToString() : string.Empty;
+                            itm.Interest = itm.InterestValue?.ToString() ?? string.Empty;
 
                             if (!rdr.IsDBNull(pos)) itm.Abstract = rdr.GetString(pos); pos++;
                             if (!rdr.IsDBNull(pos)) itm.Survey = rdr.GetString(pos); pos++;
-                            
+
                             // Value is double
                             if (!rdr.IsDBNull(pos)) itm.Value = rdr.GetDouble(pos).ToString(); pos++;
-                            
+
                             // Acres is double
                             if (!rdr.IsDBNull(pos)) itm.Acres = rdr.GetDouble(pos).ToString(); pos++;
 

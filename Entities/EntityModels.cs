@@ -34,6 +34,9 @@ public class DisplayField
     [Required, MaxLength(50)] public string FieldName { get; set; } = null!;
     [Required, MaxLength(100)] public string ColumnName { get; set; } = null!;
     public int DisplayOrder { get; set; }
+    
+    [MaxLength(50)]
+    public string Module { get; set; } = "Acquisition";
 }
 
 [Table("Permission")]

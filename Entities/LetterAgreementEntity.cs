@@ -27,6 +27,37 @@ public class LetterAgreement
     [Column(TypeName = "decimal(18,8)")] public decimal? TotalNetAcres { get; set; }
     [Column(TypeName = "money")] public decimal? TotalBonusAndFee { get; set; }
 
+    // Additional properties needed by business logic (not in database)
+    [NotMapped, MaxLength(200)]
+    public string? LetterAgreementName { get; set; }
+
+    [NotMapped]
+    public decimal? TotalOfferAmount { get; set; }
+
+    [NotMapped]
+    public decimal? TotalBonusAcceptanceLetterAmount { get; set; }
+
+    [NotMapped, MaxLength(50)]
+    public string? StateName { get; set; }
+
+    [NotMapped, MaxLength(2)]
+    public string? StateCode { get; set; }
+
+    [NotMapped, MaxLength(20)]
+    public string? AcquisitionNumber { get; set; }
+
+    [NotMapped, MaxLength(20)]
+    public string? AssignmentNumber { get; set; }
+
+    [NotMapped, MaxLength(100)]
+    public string? ReferrerName { get; set; }
+
+    [NotMapped, MaxLength(2000)]
+    public string? DealNotes { get; set; }
+
+    [NotMapped, MaxLength(1000)]
+    public string? DealTabs { get; set; }
+
     // Navigation properties
     public virtual Acquisition? Acquisition { get; set; }
     public virtual User? LandMan { get; set; }

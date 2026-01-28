@@ -21,4 +21,10 @@ public class DocumentTemplateRepository : BaseRepository<DocumentTemplate>
         return await DbSet.Include(x => x.CustomFields)
                           .FirstOrDefaultAsync(x => x.DocumentTemplateID == id);
     }
+
+    public async Task<DocumentTemplate?> GetByDSFileIdAsync(string dsFileId)
+    {
+        return await DbSet.Include(x => x.DocumentType)
+                          .FirstOrDefaultAsync(x => x.DSFileID == dsFileId);
+    }
 }

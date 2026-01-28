@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SSRBusiness.Data;
 using SSRBusiness.Entities;
 
@@ -11,10 +12,12 @@ namespace SSRBusiness.BusinessClasses
     public class RptLetterAgreementDealsRepository
     {
         private readonly SsrDbContext _context;
+        private readonly ILogger<RptLetterAgreementDealsRepository>? _logger;
 
-        public RptLetterAgreementDealsRepository(SsrDbContext context)
+        public RptLetterAgreementDealsRepository(SsrDbContext context, ILogger<RptLetterAgreementDealsRepository>? logger = null)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<List<ReportLetterAgreementDeals>> GetRptLetterAgreementDealsAsync(List<string> letAgIdList)
@@ -24,106 +27,196 @@ namespace SSRBusiness.BusinessClasses
 
             var letAgIds = letAgIdList.Select(id => int.TryParse(id, out int i) ? i : 0).Where(i => i > 0).ToList();
 
-            var query = from letAg in _context.LetterAgreements
-                        join letAgSt in _context.LetterAgreementStatuses on letAg.LetterAgreementID equals letAgSt.LetterAgreementID into stGroup
-                        from letAgSt in stGroup.DefaultIfEmpty()
-                        join letAgS in _context.LetterAgreementSellers on letAg.LetterAgreementID equals letAgS.LetterAgreementID into sGroup
-                        from letAgS in sGroup.DefaultIfEmpty()
-                        join letAgR in _context.LetterAgreementReferrers on letAg.LetterAgreementID equals letAgR.LetterAgreementID into rGroup
-                        from letAgR in rGroup.DefaultIfEmpty()
-                        join referrer in _context.Referrers on (letAgR != null ? letAgR.ReferrerID : 0) equals referrer.ReferrerID into refGroup
-                        from referrer in refGroup.DefaultIfEmpty()
-                        join ds in _context.LetterAgreementDealStatuses on (letAgSt != null ? letAgSt.DealStatusCode : "") equals ds.DealStatusCode into dsGroup
-                        from ds in dsGroup.DefaultIfEmpty()
-                        where letAgIds.Contains(letAg.LetterAgreementID)
-                           && (
-                               letAgSt == null ||
-                               (
-                                   letAgSt.StatusDate == (
-                                       from letAgSt2 in _context.LetterAgreementStatuses
-                                       where letAgSt2.LetterAgreementID == letAgSt.LetterAgreementID
-                                       select letAgSt2.StatusDate
-                                   ).Max()
-                               )
-                           )
-                        orderby letAg.LetterAgreementID
-                        select new ReportLetterAgreementDeals
-                        {
-                            LetterAgreementID = letAg.LetterAgreementID,
-                            ReferrerName = referrer != null ? referrer.ReferrerName ?? "" : "",
-                            SellerName = letAgS != null ? letAgS.SellerName ?? "" : "",
-                            SellerPhone = letAgS != null ? letAgS.ContactPhone ?? "" : "",
-                            CreatedOnDate = letAg.CreatedOn,
-                            PurchasePrice = letAg.TotalBonus,
-                            ConsiderationFee = letAg.ConsiderationFee,
-                            ReferralFee = letAg.ReferralFee,
-                            Total = letAg.TotalBonusAndFee,
-                            LandMan = letAg.LandMan != null ? (letAg.LandMan!.FirstName + " " + letAg.LandMan!.LastName) : "",
-                            DealStatus = ds != null ? ds.StatusName ?? "" : ""
-                        };
+            if (!letAgIds.Any())
+                return new List<ReportLetterAgreementDeals>();
 
-            var result = await query.ToListAsync();
+            _logger?.LogInformation("Loading {Count} letter agreements with IDs: {Ids}", letAgIds.Count, string.Join(", ", letAgIds));
 
-            foreach (var item in result)
+            // WORKAROUND for EF Core 10.0 OPENJSON bug:
+            // Instead of using Contains() which generates malformed OPENJSON syntax,
+            // we batch the IDs and query in smaller chunks to avoid the bug entirely.
+            // This approach is also more efficient for large ID lists.
+            const int batchSize = 100;
+            var letterAgreements = new List<LetterAgreement>();
+
+            for (int i = 0; i < letAgIds.Count; i += batchSize)
             {
-                item.Counties = await GetRptLetterAgreementDealsCountiesAsync(item.LetterAgreementID);
-                item.Units = await GetRptLetterAgreementDealsUnitsAsync(item.LetterAgreementID);
-                item.Notes = await GetRptLetterAgreementDealsNotesAsync(item.LetterAgreementID);
+                var batch = letAgIds.Skip(i).Take(batchSize).ToList();
 
-                // Populate summary fields used for sorting in legacy
-                if (item.Counties.Any())
+                var batchResults = await _context.LetterAgreements
+                    .FromSqlRaw($@"
+                        SELECT [l].[LetterAgreementID], [l].[AcquisitionID], [l].[BankingDays], [l].[ConsiderationFee],
+                               [l].[CreatedOn], [l].[EffectiveDate], [l].[LandManID], [l].[LastUpdatedOn],
+                               [l].[ReceiptDate], [l].[ReferralFee], [l].[Referrals], [l].[TakeConsiderationFromTotal],
+                               [l].[TotalBonus], [l].[TotalBonusAndFee], [l].[TotalGrossAcres], [l].[TotalNetAcres]
+                        FROM [LetterAgreements] AS [l]
+                        WHERE [l].[LetterAgreementID] IN ({string.Join(",", batch)})")
+                    .Include(la => la.LandMan)
+                    .OrderBy(la => la.LetterAgreementID)
+                    .ToListAsync();
+
+                letterAgreements.AddRange(batchResults);
+
+                _logger?.LogDebug("Loaded batch {BatchNumber} with {Count} letter agreements", (i / batchSize) + 1, batchResults.Count);
+            }
+
+            _logger?.LogInformation("Successfully loaded {Count} letter agreements using batched queries", letterAgreements.Count);
+
+            // Batch load all statuses - using same workaround to avoid OPENJSON bug
+            var allStatuses = await LoadInBatchesAsync(
+                letAgIds,
+                batchIds => _context.LetterAgreementStatuses
+                    .FromSqlRaw($"SELECT * FROM [LetterAgreementStatus] WHERE [LetterAgreementID] IN ({string.Join(",", batchIds)})")
+                    .Include(s => s.LetterAgreementDealStatus)
+                    .ToListAsync());
+
+            // Find latest status for each letter agreement
+            var latestStatusMap = allStatuses
+                .GroupBy(s => s.LetterAgreementID)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.OrderByDescending(s => s.StatusDate).FirstOrDefault()
+                );
+
+            // Batch load all sellers - using same workaround
+            var sellers = await LoadInBatchesAsync(
+                letAgIds,
+                batchIds => _context.LetterAgreementSellers
+                    .FromSqlRaw($"SELECT * FROM [LetterAgreementSellers] WHERE [LetterAgreementID] IN ({string.Join(",", batchIds)})")
+                    .ToListAsync());
+            var sellerMap = sellers.ToDictionary(s => s.LetterAgreementID);
+
+            // Batch load all referrers - using same workaround
+            var referrerIds = await LoadInBatchesAsync(
+                letAgIds,
+                batchIds => _context.LetterAgreementReferrers
+                    .FromSqlRaw($"SELECT * FROM [LetterAgreementReferrers] WHERE [LetterAgreementID] IN ({string.Join(",", batchIds)})")
+                    .ToListAsync());
+
+            // Load the actual referrer objects for the referrer IDs we found
+            var uniqueReferrerIds = referrerIds.Select(r => r.ReferrerID).Distinct().ToList();
+            var referrerEntities = uniqueReferrerIds.Count > 0
+                ? await _context.Referrers.Where(r => uniqueReferrerIds.Contains(r.ReferrerID)).ToListAsync()
+                : new List<Referrer>();
+
+            var referrerDict = referrerEntities.ToDictionary(r => r.ReferrerID);
+            var referrerMap = referrerIds
+                .Where(lar => referrerDict.ContainsKey(lar.ReferrerID))
+                .ToDictionary(
+                    lar => lar.LetterAgreementID,
+                    lar => referrerDict[lar.ReferrerID]);
+
+            // Batch load counties
+            var allCounties = await LoadInBatchesAsync(letAgIds, batchIds =>
+                (from lac in _context.LetterAgreementCounties
+                 join c in _context.Counties on lac.CountyID equals c.CountyID
+                 where batchIds.Contains(lac.LetterAgreementID)
+                 orderby (c.CountyName ?? "").ToUpper()
+                 select new { lac.LetterAgreementID, Data = new ReportLetterAgreementDealsCounty { CountyName = c.CountyName + ", " + c.StateCode } })
+                .ToListAsync());
+            var countyMap = allCounties.GroupBy(x => x.LetterAgreementID).ToDictionary(g => g.Key, g => g.Select(x => x.Data).ToList());
+
+            // Batch load units
+            var allUnits = await LoadInBatchesAsync(letAgIds, batchIds =>
+                (from lau in _context.LetterAgreementUnits
+                 where batchIds.Contains(lau.LetterAgreementID)
+                 orderby (lau.UnitName ?? "").ToUpper()
+                 select new { lau.LetterAgreementID, Data = new ReportLetterAgreementDealsUnit { UnitName = lau.UnitName ?? "", UnitInterest = lau.UnitInterest } })
+                .ToListAsync());
+            var unitMap = allUnits.GroupBy(x => x.LetterAgreementID).ToDictionary(g => g.Key, g => g.Select(x => x.Data).ToList());
+
+            // Batch load notes
+            var allNotes = await LoadInBatchesAsync(letAgIds, batchIds =>
+                (from lan in _context.LetterAgreementNotes
+                 join nt in _context.NoteTypes on lan.NoteTypeCode equals nt.NoteTypeCode
+                 where batchIds.Contains(lan.LetterAgreementID)
+                 orderby lan.CreatedDateTime
+                 select new
+                 {
+                     lan.LetterAgreementID,
+                     Data = new ReportLetterAgreementDealsNote
+                     {
+                         NoteCreatedOn = lan.CreatedDateTime,
+                         UserFirstName = lan.User.FirstName ?? "",
+                         UserLastName = lan.User.LastName ?? "",
+                         UserName = lan.User.UserId.ToString(),
+                         NoteTypeDesc = nt.NoteTypeDesc ?? "",
+                         Note = lan.NoteText ?? ""
+                     }
+                 })
+                .ToListAsync());
+            var noteMap = allNotes.GroupBy(x => x.LetterAgreementID).ToDictionary(g => g.Key, g => g.Select(x => x.Data).ToList());
+
+            var result = new List<ReportLetterAgreementDeals>();
+
+            foreach (var letAg in letterAgreements)
+            {
+                latestStatusMap.TryGetValue(letAg.LetterAgreementID, out var latestStatus);
+                sellerMap.TryGetValue(letAg.LetterAgreementID, out var seller);
+                referrerMap.TryGetValue(letAg.LetterAgreementID, out var referrer);
+
+                // Retrieve lists from generic maps
+                countyMap.TryGetValue(letAg.LetterAgreementID, out var counties);
+                unitMap.TryGetValue(letAg.LetterAgreementID, out var units);
+                noteMap.TryGetValue(letAg.LetterAgreementID, out var notes);
+
+                var reportItem = new ReportLetterAgreementDeals
                 {
-                    item.CountyName = item.Counties.Count > 1 ? " Multiple" : item.Counties.First().CountyName;
+                    LetterAgreementID = letAg.LetterAgreementID,
+                    ReferrerName = referrer?.ReferrerName ?? "",
+                    SellerName = seller?.SellerName ?? "",
+                    SellerPhone = seller?.ContactPhone ?? "",
+                    CreatedOnDate = letAg.CreatedOn,
+                    PurchasePrice = letAg.TotalBonus,
+                    ConsiderationFee = letAg.ConsiderationFee,
+                    ReferralFee = letAg.ReferralFee,
+                    Total = letAg.TotalBonusAndFee,
+                    LandMan = letAg.LandMan != null ? $"{letAg.LandMan.FirstName} {letAg.LandMan.LastName}".Trim() : "",
+                    DealStatus = latestStatus?.LetterAgreementDealStatus?.StatusName ?? "",
+
+                    // Assign bulk loaded lists
+                    Counties = counties ?? new List<ReportLetterAgreementDealsCounty>(),
+                    Units = units ?? new List<ReportLetterAgreementDealsUnit>(),
+                    Notes = notes ?? new List<ReportLetterAgreementDealsNote>()
+                };
+
+                // Populate summary fields used for grouping/sorting
+                if (reportItem.Counties.Any())
+                {
+                    reportItem.CountyName = reportItem.Counties.Count > 1 ? " Multiple" : reportItem.Counties.First().CountyName;
                 }
                 else
                 {
-                    item.CountyName = " None";
+                    reportItem.CountyName = " None";
                 }
+
+                result.Add(reportItem);
             }
 
             return result;
         }
 
-        private async Task<List<ReportLetterAgreementDealsCounty>> GetRptLetterAgreementDealsCountiesAsync(int letterAgreementID)
+        /// <summary>
+        /// Helper method to load data in batches to avoid EF Core 10.0 OPENJSON bug.
+        /// Splits a list of IDs into smaller batches and executes the query function for each batch.
+        /// Note: All IDs are validated integers, so no SQL injection risk when used with FromSqlRaw.
+        /// </summary>
+#pragma warning disable EF1002 // Risk of SQL injection - suppressed because IDs are validated integers
+        private async Task<List<T>> LoadInBatchesAsync<T>(List<int> ids, Func<List<int>, Task<List<T>>> queryFunc)
         {
-            return await (from lac in _context.LetterAgreementCounties
-                          join c in _context.Counties on lac.CountyID equals c.CountyID
-                          where lac.LetterAgreementID == letterAgreementID
-                          orderby (c.CountyName ?? "").ToUpper()
-                          select new ReportLetterAgreementDealsCounty
-                          {
-                              CountyName = c.CountyName + ", " + c.StateCode
-                          }).ToListAsync();
-        }
+            const int batchSize = 100;
+            var results = new List<T>();
 
-        private async Task<List<ReportLetterAgreementDealsUnit>> GetRptLetterAgreementDealsUnitsAsync(int letterAgreementID)
-        {
-            return await (from lau in _context.LetterAgreementUnits
-                          where lau.LetterAgreementID == letterAgreementID
-                          orderby (lau.UnitName ?? "").ToUpper()
-                          select new ReportLetterAgreementDealsUnit
-                          {
-                              UnitName = lau.UnitName ?? "",
-                              UnitInterest = lau.UnitInterest
-                          }).ToListAsync();
-        }
+            for (int i = 0; i < ids.Count; i += batchSize)
+            {
+                var batch = ids.Skip(i).Take(batchSize).ToList();
+                var batchResults = await queryFunc(batch);
+                results.AddRange(batchResults);
+            }
 
-        private async Task<List<ReportLetterAgreementDealsNote>> GetRptLetterAgreementDealsNotesAsync(int letterAgreementID)
-        {
-            return await (from lan in _context.LetterAgreementNotes
-                          join nt in _context.NoteTypes on lan.NoteTypeCode equals nt.NoteTypeCode
-                          where lan.LetterAgreementID == letterAgreementID
-                          orderby lan.CreatedDateTime
-                          select new ReportLetterAgreementDealsNote
-                          {
-                              NoteCreatedOn = lan.CreatedDateTime,
-                              UserFirstName = lan.User.FirstName ?? "",
-                              UserLastName = lan.User.LastName ?? "",
-                              UserName = lan.User.UserId.ToString(),
-                              NoteTypeDesc = nt.NoteTypeDesc ?? "",
-                              Note = lan.NoteText ?? ""
-                          }).ToListAsync();
+            return results;
         }
+#pragma warning restore EF1002
     }
 
     public class ReportLetterAgreementDeals

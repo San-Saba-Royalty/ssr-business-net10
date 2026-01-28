@@ -17,11 +17,12 @@ public class DisplayFieldRepository
     }
 
     /// <summary>
-    /// Get all display fields ordered by display order
+    /// Get all display fields ordered by display order for a specific module
     /// </summary>
-    public async Task<List<DisplayField>> GetDisplayFieldsAsync()
+    public async Task<List<DisplayField>> GetDisplayFieldsAsync(string module = "Acquisition")
     {
         return await _context.DisplayFields
+            .Where(f => f.Module == module)
             .OrderBy(f => f.DisplayOrder)
             .AsNoTracking()
             .ToListAsync();
