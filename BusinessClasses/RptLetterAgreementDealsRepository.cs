@@ -20,28 +20,27 @@ namespace SSRBusiness.BusinessClasses
             _logger = logger;
         }
 
-        public async Task<List<ReportLetterAgreementDeals>> GetRptLetterAgreementDealsAsync(List<string> letAgIdList)
+        public async Task<List<ReportLetterAgreementDeals>> GetRptLetterAgreementDealsAsync(List<string> acqIdList)
         {
-            if (letAgIdList == null || !letAgIdList.Any())
+            if (acqIdList == null || !acqIdList.Any())
                 return new List<ReportLetterAgreementDeals>();
 
-            var letAgIds = letAgIdList.Select(id => int.TryParse(id, out int i) ? i : 0).Where(i => i > 0).ToList();
+            var acqIds = acqIdList.Select(id => int.TryParse(id, out int i) ? i : 0).Where(i => i > 0).ToList();
 
-            if (!letAgIds.Any())
+            if (!acqIds.Any())
                 return new List<ReportLetterAgreementDeals>();
 
-            _logger?.LogInformation("Loading {Count} letter agreements with IDs: {Ids}", letAgIds.Count, string.Join(", ", letAgIds));
+            _logger?.LogInformation("Loading letter agreements for {Count} acquisitions", acqIds.Count);
 
             // WORKAROUND for EF Core 10.0 OPENJSON bug:
             // Instead of using Contains() which generates malformed OPENJSON syntax,
             // we batch the IDs and query in smaller chunks to avoid the bug entirely.
-            // This approach is also more efficient for large ID lists.
             const int batchSize = 100;
             var letterAgreements = new List<LetterAgreement>();
 
-            for (int i = 0; i < letAgIds.Count; i += batchSize)
+            for (int i = 0; i < acqIds.Count; i += batchSize)
             {
-                var batch = letAgIds.Skip(i).Take(batchSize).ToList();
+                var batch = acqIds.Skip(i).Take(batchSize).ToList();
 
                 var batchResults = await _context.LetterAgreements
                     .FromSqlRaw($@"
@@ -50,7 +49,7 @@ namespace SSRBusiness.BusinessClasses
                                [l].[ReceiptDate], [l].[ReferralFee], [l].[Referrals], [l].[TakeConsiderationFromTotal],
                                [l].[TotalBonus], [l].[TotalBonusAndFee], [l].[TotalGrossAcres], [l].[TotalNetAcres]
                         FROM [LetterAgreements] AS [l]
-                        WHERE [l].[LetterAgreementID] IN ({string.Join(",", batch)})")
+                        WHERE [l].[AcquisitionID] IN ({string.Join(",", batch)})")
                     .Include(la => la.LandMan)
                     .OrderBy(la => la.LetterAgreementID)
                     .ToListAsync();
@@ -60,7 +59,13 @@ namespace SSRBusiness.BusinessClasses
                 _logger?.LogDebug("Loaded batch {BatchNumber} with {Count} letter agreements", (i / batchSize) + 1, batchResults.Count);
             }
 
-            _logger?.LogInformation("Successfully loaded {Count} letter agreements using batched queries", letterAgreements.Count);
+            _logger?.LogInformation("Successfully loaded {Count} letter agreements for {AcqCount} acquisitions", letterAgreements.Count, acqIds.Count);
+
+            if (!letterAgreements.Any())
+                return new List<ReportLetterAgreementDeals>();
+
+            // Extract the actual LetterAgreementIDs to use for all status/seller/county/etc. lookups
+            var letAgIds = letterAgreements.Select(la => la.LetterAgreementID).ToList();
 
             // Batch load all statuses - using same workaround to avoid OPENJSON bug
             var allStatuses = await LoadInBatchesAsync(

@@ -56,9 +56,9 @@ namespace SSRBusiness.BusinessClasses
             return ExportToPdf(report);
         }
 
-        public async Task<byte[]> RunLetterAgreementDealsReportAsync(List<string> letAgIdList)
+        public async Task<byte[]> RunLetterAgreementDealsReportAsync(List<string> acqIdList)
         {
-            var data = await _letterAgreementDealsRepository.GetRptLetterAgreementDealsAsync(letAgIdList);
+            var data = await _letterAgreementDealsRepository.GetRptLetterAgreementDealsAsync(acqIdList);
             var report = LetterAgreementDealsReport.Create(data, DateTime.Now.ToString("MM/dd/yyyy hh:mm:ss tt"));
             return ExportToPdf(report);
         }
