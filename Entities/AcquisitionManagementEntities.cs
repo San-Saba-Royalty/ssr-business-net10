@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -117,18 +118,31 @@ public class Acquisition
     [NotMapped, MaxLength(500)]
     public string? BorrowerAddress { get; set; }
 
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual User? LandMan { get; set; }
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionBuyer> AcquisitionBuyers { get; set; } = new List<AcquisitionBuyer>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionChange> AcquisitionChanges { get; set; } = new List<AcquisitionChange>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionCounty> AcquisitionCounties { get; set; } = new List<AcquisitionCounty>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionDocument> AcquisitionDocuments { get; set; } = new List<AcquisitionDocument>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionNote> AcquisitionNotes { get; set; } = new List<AcquisitionNote>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionSeller> AcquisitionSellers { get; set; } = new List<AcquisitionSeller>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionReferrer> AcquisitionReferrers { get; set; } = new List<AcquisitionReferrer>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionOperator> AcquisitionOperators { get; set; } = new List<AcquisitionOperator>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionStatus> AcquisitionStatus { get; set; } = new List<AcquisitionStatus>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionUnit> AcquisitionUnits { get; set; } = new List<AcquisitionUnit>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionLien> AcquisitionLiens { get; set; } = new List<AcquisitionLien>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcqCurativeRequirement> AcqCurativeRequirements { get; set; } = new List<AcqCurativeRequirement>();
 }
 

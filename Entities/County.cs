@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -40,6 +41,8 @@ public class County
     [ForeignKey(nameof(StateCode))]
     public virtual State? State { get; set; }
     
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<CountyContact> CountyContacts { get; set; } = new List<CountyContact>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<CountyAppraisalGroup> CountyAppraisalGroups { get; set; } = new List<CountyAppraisalGroup>();
 }

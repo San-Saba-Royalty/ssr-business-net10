@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -59,9 +60,12 @@ public class AcquisitionUnit
     [NotMapped]
     public decimal? Decimals { get; set; }
 
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Acquisition Acquisition { get; set; } = null!;
     [ForeignKey("UnitTypeCode")]
     public virtual UnitType? UnitType { get; set; }
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcqUnitCounty> AcqUnitCounties { get; set; } = new List<AcqUnitCounty>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcqUnitWell> AcqUnitWells { get; set; } = new List<AcqUnitWell>();
 }

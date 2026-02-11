@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -15,7 +16,8 @@ public class AcquisitionLien
     [MaxLength(10)] public string? LienPosition { get; set; }
     [Column(TypeName = "money")] public decimal? OriginalAmount { get; set; }
     [Column(TypeName = "money")] public decimal? PayoffAmount { get; set; }
-    
+
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Acquisition Acquisition { get; set; } = null!;
     public virtual LienType LienType { get; set; } = null!;
 }
@@ -51,7 +53,8 @@ public class AcqCurativeRequirement
     public int CurativeTypeID { get; set; }
     public DateTime? CompletedDate { get; set; }
     public string? Notes { get; set; }
-    
+
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Acquisition Acquisition { get; set; } = null!;
     public virtual CurativeType CurativeType { get; set; } = null!;
 }

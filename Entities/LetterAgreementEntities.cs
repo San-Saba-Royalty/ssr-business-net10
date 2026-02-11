@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -13,6 +14,7 @@ public class LetterAgreementOperator
     public int OperatorID { get; set; }
 
     [ForeignKey("LetterAgreementID")]
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual LetterAgreement LetterAgreement { get; set; } = null!;
     [ForeignKey("OperatorID")]
     public virtual Operator Operator { get; set; } = null!;

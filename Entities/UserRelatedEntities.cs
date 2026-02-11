@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -23,6 +24,7 @@ public class UserRole
     public int RoleId { get; set; }
 
     [ForeignKey("UserId")]
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual User User { get; set; } = null!;
 
     [ForeignKey("RoleId")]
@@ -39,7 +41,9 @@ public class Role
     [Column("Role")]
     public string RoleName { get; set; } = string.Empty;
 
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
 }
 
@@ -56,6 +60,7 @@ public class UserHistory
     public string? Action { get; set; }
 
     [ForeignKey("UserId")]
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual User User { get; set; } = null!;
 }
 
@@ -72,6 +77,7 @@ public class UserPasswordHistory
     public string? OldPassword { get; set; }
 
     [ForeignKey("UserId")]
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual User User { get; set; } = null!;
 }
 
@@ -86,7 +92,9 @@ public class ChangeType
     [MaxLength(50)]
     public string? ChangeTypeDesc { get; set; }
 
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionChange> AcquisitionChanges { get; set; } = new List<AcquisitionChange>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<LetterAgreementChange> LetterAgreementChanges { get; set; } = new List<LetterAgreementChange>();
 }
 
@@ -117,9 +125,11 @@ public class AcquisitionChange
     public string? OldValue { get; set; }
 
     [ForeignKey("UserId")]
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual User User { get; set; } = null!;
     
     [ForeignKey("AcquisitionId")]
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Acquisition? Acquisition { get; set; }
     
     [ForeignKey("ChangeTypeCode")]
@@ -153,9 +163,11 @@ public class LetterAgreementChange
     public string? OldValue { get; set; }
 
     [ForeignKey("UserId")]
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual User User { get; set; } = null!;
     
     [ForeignKey("LetterAgreementId")]
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual LetterAgreement? LetterAgreement { get; set; }
     
     [ForeignKey("ChangeTypeCode")]
@@ -175,9 +187,11 @@ public class AcquisitionDocument
     public int UserId { get; set; }
 
     [ForeignKey("UserId")]
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual User User { get; set; } = null!;
 
     [ForeignKey("AcquisitionID")]
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Acquisition? Acquisition { get; set; }
 
     [StringLength(500)]

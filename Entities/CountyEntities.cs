@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -13,6 +14,7 @@ public class CountyAppraisalGroup
     public int AppraisalGroupID { get; set; }
     public DateTime EffectiveDate { get; set; }
 
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual County County { get; set; } = null!;
     public virtual AppraisalGroup AppraisalGroup { get; set; } = null!;
 }
@@ -54,5 +56,6 @@ public class LetAgUnitWell
     [Required, MaxLength(200)]
     public string WellName { get; set; } = null!;
 
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual LetterAgreement LetterAgreement { get; set; } = null!;
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -13,6 +14,7 @@ public class AcqUnitCountyOperator
     public int AcqUnitCountyID { get; set; }
     public int OperatorID { get; set; }
 
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Acquisition Acquisition { get; set; } = null!;
     public virtual AcqUnitCounty AcqUnitCounty { get; set; } = null!;
     public virtual Operator Operator { get; set; } = null!;

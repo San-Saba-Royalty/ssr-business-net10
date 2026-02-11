@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -68,10 +69,16 @@ public class User
     public string? DefaultReportOutput { get; set; }
 
     // Navigation properties
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<UserHistory> UserHistories { get; set; } = new List<UserHistory>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<UserPasswordHistory> PasswordHistories { get; set; } = new List<UserPasswordHistory>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionChange> AcquisitionChanges { get; set; } = new List<AcquisitionChange>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionDocument> AcquisitionDocuments { get; set; } = new List<AcquisitionDocument>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionNote> AcquisitionNotes { get; set; } = new List<AcquisitionNote>();
 }

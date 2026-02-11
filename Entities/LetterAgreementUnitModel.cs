@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -35,6 +36,7 @@ public class LetterAgreementUnit
     public char? RangeDir { get; set; }
     public int? SectionNum { get; set; }
 
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual LetterAgreement LetterAgreement { get; set; } = null!;
     [ForeignKey("UnitTypeCode")]
     public virtual UnitType? UnitType { get; set; }
@@ -49,7 +51,9 @@ public class LetAgUnitCounty
     public int LetterAgreementUnitID { get; set; }
     public int CountyID { get; set; }
     
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual LetterAgreement LetterAgreement { get; set; } = null!;
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual LetterAgreementUnit LetterAgreementUnit { get; set; } = null!;
     public virtual County County { get; set; } = null!;
     public virtual ICollection<LetAgUnitCountyOperator> LetAgUnitCountyOperators { get; set; } = new List<LetAgUnitCountyOperator>();
@@ -63,7 +67,9 @@ public class LetAgUnitCountyOperator
     public int LetAgUnitCountyID { get; set; }
     public int OperatorID { get; set; }
     
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual LetterAgreement LetterAgreement { get; set; } = null!;
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual LetAgUnitCounty LetAgUnitCounty { get; set; } = null!;
     public virtual Operator Operator { get; set; } = null!;
 }

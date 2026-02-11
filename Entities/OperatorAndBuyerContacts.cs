@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -27,6 +28,7 @@ public class OperatorContact
     [MaxLength(2)] public string? StateCode { get; set; }
     [MaxLength(10)] public string? ZipCode { get; set; }
 
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Operator Operator { get; set; } = null!;
 }
 

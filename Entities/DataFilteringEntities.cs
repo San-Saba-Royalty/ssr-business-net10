@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -12,8 +13,10 @@ public class AcqUnitCounty
     public int AcquisitionID { get; set; }
     public int AcquisitionUnitID { get; set; }
     public int CountyID { get; set; }
-    
+
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Acquisition Acquisition { get; set; } = null!;
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual AcquisitionUnit AcquisitionUnit { get; set; } = null!;
     public virtual County County { get; set; } = null!;
 }
@@ -27,7 +30,8 @@ public class AcqUnitWell
     
     [Required, MaxLength(200)]
     public string WellName { get; set; } = null!;
-    
+
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Acquisition Acquisition { get; set; } = null!;
     public virtual AcquisitionUnit AcquisitionUnit { get; set; } = null!;
 }
@@ -57,6 +61,7 @@ public class FilterField
     [MaxLength(500)]
     public string? ComparisonValue { get; set; }
 
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Filter Filter { get; set; } = null!;
 }
 
@@ -86,7 +91,9 @@ public class UserPagePreference
     
     public int ViewID { get; set; }
     
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual User User { get; set; } = null!;
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual View View { get; set; } = null!;
 }
 
@@ -98,5 +105,6 @@ public class ViewField
     public int FieldID { get; set; }
     public int DisplayOrder { get; set; }
     
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual View View { get; set; } = null!;
 }

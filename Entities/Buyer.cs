@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -48,8 +49,10 @@ public class Buyer
     public decimal? DefaultCommission { get; set; }
 
     // Navigation property - many-to-many relationship with Acquisitions through AcquisitionBuyer
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<AcquisitionBuyer> AcquisitionBuyers { get; set; } = new List<AcquisitionBuyer>();
     
     // Navigation property for contacts
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<BuyerContact> BuyerContacts { get; set; } = new List<BuyerContact>();
 }

@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -45,6 +46,7 @@ public class RolePermission
     public string PermissionCode { get; set; } = null!;
 
     [ForeignKey("RoleID")]
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Role Role { get; set; } = null!;
 
     [ForeignKey("PermissionCode")]

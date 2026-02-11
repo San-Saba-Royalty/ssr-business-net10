@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -28,5 +29,6 @@ public class Operator
     [MaxLength(2)] public string? StateCode { get; set; }
     [MaxLength(10)] public string? ZipCode { get; set; }
 
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<OperatorContact> OperatorContacts { get; set; } = new List<OperatorContact>();
 }

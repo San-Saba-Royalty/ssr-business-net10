@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -59,15 +60,25 @@ public class LetterAgreement
     public string? DealTabs { get; set; }
 
     // Navigation properties
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Acquisition? Acquisition { get; set; }
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual User? LandMan { get; set; }
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<LetterAgreementUnit> LetterAgreementUnits { get; set; } = new List<LetterAgreementUnit>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<LetterAgreementNote> LetterAgreementNotes { get; set; } = new List<LetterAgreementNote>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<LetterAgreementSeller> LetterAgreementSellers { get; set; } = new List<LetterAgreementSeller>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<LetterAgreementReferrer> LetterAgreementReferrers { get; set; } = new List<LetterAgreementReferrer>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<LetterAgreementCounty> LetterAgreementCounties { get; set; } = new List<LetterAgreementCounty>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<LetterAgreementOperator> LetterAgreementOperators { get; set; } = new List<LetterAgreementOperator>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<LetterAgreementStatus> LetterAgreementStatuses { get; set; } = new List<LetterAgreementStatus>();
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual ICollection<LetterAgreementChange> LetterAgreementChanges { get; set; } = new List<LetterAgreementChange>();
 }
 

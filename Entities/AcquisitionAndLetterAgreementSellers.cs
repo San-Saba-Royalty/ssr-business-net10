@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -68,6 +69,7 @@ public class AcquisitionSeller
     public string? VestingName { get; set; }
 
     [ForeignKey("AcquisitionID")]
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Acquisition Acquisition { get; set; } = null!;
 }
 
@@ -112,5 +114,6 @@ public class LetterAgreementSeller
     public DateTime LastUpdatedOn { get; set; }
 
     [ForeignKey("LetterAgreementID")]
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual LetterAgreement LetterAgreement { get; set; } = null!;
 }

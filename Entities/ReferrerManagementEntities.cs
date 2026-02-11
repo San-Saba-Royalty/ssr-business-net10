@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
 
@@ -14,6 +15,7 @@ public class UserAcquisitionSetup
 
     [ForeignKey("UserID")]
     public virtual User User { get; set; } = null!;
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Acquisition Acquisition { get; set; } = null!;
 }
 
@@ -81,6 +83,7 @@ public class ReferrerForm
     [MaxLength(50)]
     public string? DSFileID { get; set; }
 
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Referrer Referrer { get; set; } = null!;
 }
 
