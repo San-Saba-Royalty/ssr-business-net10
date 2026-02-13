@@ -63,6 +63,12 @@ public class FilterField
 
     [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Filter Filter { get; set; } = null!;
+
+    [ForeignKey(nameof(FieldID))]
+    public virtual LookupField? LookupField { get; set; }
+
+    [ForeignKey(nameof(ComparisonTypeID))]
+    public virtual ComparisonType? ComparisonType { get; set; }
 }
 
 public class View

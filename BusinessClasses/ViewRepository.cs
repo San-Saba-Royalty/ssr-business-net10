@@ -225,4 +225,40 @@ public class ViewRepository
     }
 
     #endregion
+
+    #region User View Preference Operations (Column Ordering)
+
+    /// <summary>
+    /// Get user's column preference for a specific view
+    /// </summary>
+    public async Task<UserViewPreference?> GetUserViewPreferenceAsync(int userId, string viewName, string tableName)
+    {
+        return await _context.UserViewPreferences
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserID == userId && p.ViewName == viewName && p.TableName == tableName);
+    }
+
+    /// <summary>
+    /// Save or update user's column preference
+    /// </summary>
+    public async Task SaveUserViewPreferenceAsync(UserViewPreference preference)
+    {
+        var existing = await _context.UserViewPreferences
+            .FirstOrDefaultAsync(p => p.UserID == preference.UserID && p.ViewName == preference.ViewName && p.TableName == preference.TableName);
+
+        if (existing == null)
+        {
+            _context.UserViewPreferences.Add(preference);
+        }
+        else
+        {
+            existing.ColumnOrder = preference.ColumnOrder;
+            existing.IsDefault = preference.IsDefault;
+            _context.UserViewPreferences.Update(existing);
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    #endregion
 }

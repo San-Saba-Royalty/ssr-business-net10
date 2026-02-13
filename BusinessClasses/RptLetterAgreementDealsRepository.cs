@@ -38,6 +38,7 @@ namespace SSRBusiness.BusinessClasses
             const int batchSize = 100;
             var letterAgreements = new List<LetterAgreement>();
 
+#pragma warning disable EF1002 // Risk of SQL injection - suppressed because IDs are validated integers
             for (int i = 0; i < acqIds.Count; i += batchSize)
             {
                 var batch = acqIds.Skip(i).Take(batchSize).ToList();
@@ -58,6 +59,7 @@ namespace SSRBusiness.BusinessClasses
 
                 _logger?.LogDebug("Loaded batch {BatchNumber} with {Count} letter agreements", (i / batchSize) + 1, batchResults.Count);
             }
+#pragma warning restore EF1002
 
             _logger?.LogInformation("Successfully loaded {Count} letter agreements for {AcqCount} acquisitions", letterAgreements.Count, acqIds.Count);
 
@@ -70,10 +72,15 @@ namespace SSRBusiness.BusinessClasses
             // Batch load all statuses - using same workaround to avoid OPENJSON bug
             var allStatuses = await LoadInBatchesAsync(
                 letAgIds,
-                batchIds => _context.LetterAgreementStatuses
-                    .FromSqlRaw($"SELECT * FROM [LetterAgreementStatus] WHERE [LetterAgreementID] IN ({string.Join(",", batchIds)})")
-                    .Include(s => s.LetterAgreementDealStatus)
-                    .ToListAsync());
+                batchIds =>
+                {
+#pragma warning disable EF1002 // Risk of SQL injection - suppressed because IDs are validated integers
+                    return _context.LetterAgreementStatuses
+                        .FromSqlRaw($"SELECT * FROM [LetterAgreementStatus] WHERE [LetterAgreementID] IN ({string.Join(",", batchIds)})")
+                        .Include(s => s.LetterAgreementDealStatus)
+                        .ToListAsync();
+#pragma warning restore EF1002
+                });
 
             // Find latest status for each letter agreement
             var latestStatusMap = allStatuses
@@ -86,17 +93,27 @@ namespace SSRBusiness.BusinessClasses
             // Batch load all sellers - using same workaround
             var sellers = await LoadInBatchesAsync(
                 letAgIds,
-                batchIds => _context.LetterAgreementSellers
-                    .FromSqlRaw($"SELECT * FROM [LetterAgreementSellers] WHERE [LetterAgreementID] IN ({string.Join(",", batchIds)})")
-                    .ToListAsync());
+                batchIds =>
+                {
+#pragma warning disable EF1002 // Risk of SQL injection - suppressed because IDs are validated integers
+                    return _context.LetterAgreementSellers
+                        .FromSqlRaw($"SELECT * FROM [LetterAgreementSellers] WHERE [LetterAgreementID] IN ({string.Join(",", batchIds)})")
+                        .ToListAsync();
+#pragma warning restore EF1002
+                });
             var sellerMap = sellers.ToDictionary(s => s.LetterAgreementID);
 
             // Batch load all referrers - using same workaround
             var referrerIds = await LoadInBatchesAsync(
                 letAgIds,
-                batchIds => _context.LetterAgreementReferrers
-                    .FromSqlRaw($"SELECT * FROM [LetterAgreementReferrers] WHERE [LetterAgreementID] IN ({string.Join(",", batchIds)})")
-                    .ToListAsync());
+                batchIds =>
+                {
+#pragma warning disable EF1002 // Risk of SQL injection - suppressed because IDs are validated integers
+                    return _context.LetterAgreementReferrers
+                        .FromSqlRaw($"SELECT * FROM [LetterAgreementReferrers] WHERE [LetterAgreementID] IN ({string.Join(",", batchIds)})")
+                        .ToListAsync();
+#pragma warning restore EF1002
+                });
 
             // Load the actual referrer objects for the referrer IDs we found
             var uniqueReferrerIds = referrerIds.Select(r => r.ReferrerID).Distinct().ToList();

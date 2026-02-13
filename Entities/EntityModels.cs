@@ -39,6 +39,9 @@ public class DisplayField
     
     [MaxLength(50)]
     public string Module { get; set; } = "Acquisition";
+    
+    [MaxLength(20)]
+    public string? DataType { get; set; }
 }
 
 [Table("Permission")]

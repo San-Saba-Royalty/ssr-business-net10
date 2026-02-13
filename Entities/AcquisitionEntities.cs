@@ -13,6 +13,32 @@ public class AcquisitionBuyer
     public int AcquisitionID { get; set; }
     public int BuyerID { get; set; }
 
+    // ── Per-buyer invoicing fields ──────────────────────────────────────
+    [Column(TypeName = "decimal(8,5)")]
+    public decimal? PurchasePercent { get; set; }
+
+    [Column(TypeName = "money")]
+    public decimal? PurchaseAmount { get; set; }
+
+    [MaxLength(50)]
+    public string? InvoiceNumber { get; set; }
+
+    public DateTime? InvoiceDate { get; set; }
+    public DateTime? InvoiceDueDate { get; set; }
+    public DateTime? InvoicePaidDate { get; set; }
+
+    public bool AutoCalculate { get; set; } = true;
+
+    [Column(TypeName = "money")]
+    public decimal? InvoiceTotal { get; set; }
+
+    [Column(TypeName = "money")]
+    public decimal? Markup { get; set; }
+
+    [Column(TypeName = "money")]
+    public decimal? RecordingFee { get; set; }
+
+    // ── Navigation properties ───────────────────────────────────────────
     [ForeignKey("AcquisitionID")]
     [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual Acquisition Acquisition { get; set; } = null!;

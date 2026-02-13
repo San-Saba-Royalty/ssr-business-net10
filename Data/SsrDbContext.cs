@@ -64,6 +64,7 @@ public class SsrDbContext : DbContext
     public DbSet<DocTemplateCustomField> DocTemplateCustomFields { get; set; }
     public DbSet<Filter> Filters { get; set; }
     public DbSet<FilterField> FilterFields { get; set; }
+    public DbSet<ComparisonLookupXref> ComparisonLookupXrefs { get; set; }
     public DbSet<FolderLocation> FolderLocations { get; set; }
     public DbSet<LienType> LienTypes { get; set; }
     public DbSet<LoginStatus> LoginStatuses { get; set; }
@@ -79,7 +80,9 @@ public class SsrDbContext : DbContext
     public DbSet<ReferrerFormType> ReferrerFormTypes { get; set; }
     public DbSet<ReferrerType> ReferrerTypes { get; set; }
     // public DbSet<Report> Reports { get; set; } // Table doesn't exist in database
-    public DbSet<Role> Roles { get; set; }
+    public virtual DbSet<Role> Roles { get; set; }
+
+    public virtual DbSet<UserViewPreference> UserViewPreferences { get; set; }
     public DbSet<RolePermission> RolePermissions { get; set; }
     public DbSet<Sequence> Sequences { get; set; }
     public DbSet<SigningPartner> SigningPartners { get; set; }
