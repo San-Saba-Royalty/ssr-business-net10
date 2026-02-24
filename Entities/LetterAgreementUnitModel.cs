@@ -41,6 +41,7 @@ public class LetterAgreementUnit
     [ForeignKey("UnitTypeCode")]
     public virtual UnitType? UnitType { get; set; }
     public virtual ICollection<LetAgUnitCounty> LetAgUnitCounties { get; set; } = new List<LetAgUnitCounty>();
+    public virtual ICollection<LetAgUnitWell> LetAgUnitWells { get; set; } = new List<LetAgUnitWell>();
 }
 
 public class LetAgUnitCounty

@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace SSRBusiness.Entities;
@@ -56,6 +57,11 @@ public class LetAgUnitWell
     [Required, MaxLength(200)]
     public string WellName { get; set; } = null!;
 
+    [ForeignKey("LetterAgreementUnitID")]
+    [JsonIgnore] // Break circular reference for OpenAPI schema generation
+    public virtual LetterAgreementUnit LetterAgreementUnit { get; set; } = null!;
+
+    [ForeignKey("LetterAgreementID")]
     [JsonIgnore] // Break circular reference for OpenAPI schema generation
     public virtual LetterAgreement LetterAgreement { get; set; } = null!;
 }

@@ -18,6 +18,7 @@ public class AcquisitionRepository : BaseRepository<Acquisition>
     {
         return await DbSet
             .Include(a => a.AcquisitionStatus)
+            .Include(a => a.LandMan)
             .Include(a => a.AcquisitionBuyers).ThenInclude(ab => ab.Buyer).ThenInclude(b => b.BuyerContacts)
             .Include(a => a.AcquisitionSellers)
             .Include(a => a.AcquisitionCounties).ThenInclude(ac => ac.County).ThenInclude(c => c.CountyContacts)

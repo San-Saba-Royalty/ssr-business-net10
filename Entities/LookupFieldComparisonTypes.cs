@@ -37,6 +37,7 @@ public class ComparisonType
     public string ComparisonDesc { get; set; } = null!;
 }
 
+[Table("ComparisonLookupXref")]
 public class ComparisonLookupXref
 {
     [Key]

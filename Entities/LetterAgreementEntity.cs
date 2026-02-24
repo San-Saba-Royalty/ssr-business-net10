@@ -20,6 +20,7 @@ public class LetterAgreement
     public DateTime LastUpdatedOn { get; set; }
     public bool Referrals { get; set; }
     [Column(TypeName = "money")] public decimal? ReferralFee { get; set; }
+    public bool TakeReferralFeeFromTotal { get; set; }
     public DateTime? EffectiveDate { get; set; }
     public DateTime? ReceiptDate { get; set; }
     
