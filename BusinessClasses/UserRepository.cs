@@ -42,6 +42,17 @@ public class UserRepository : Repository<User>
     }
 
     /// <summary>
+    /// Loads a user by email address only (case-insensitive).
+    /// Used by KratosUserResolutionMiddleware to map a Kratos JWT email claim
+    /// to the corresponding local Users table record.
+    /// </summary>
+    public async Task<User?> LoadUserByEmailAsync(string email)
+        => await DbSet
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .SingleOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == email.ToLower());
+
+    /// <summary>
     /// Authenticates a user password against stored hash
     /// </summary>
     /// <param name="user">User entity with password hash and salt</param>
